@@ -5,12 +5,16 @@ import UndoToast from '../components/shared/UndoToast'
 import BoardView from '../components/board/BoardView'
 import ListView from '../components/list/ListView'
 import DashboardView from '../components/dashboard/DashboardView'
+import GanttView from '../components/gantt/GanttView'
+import FilterBar from '../components/filters/FilterBar'
+import SavedViewsMenu from '../components/filters/SavedViewsMenu'
 import { useApp } from '../hooks/useApp'
 import styles from './App.module.css'
 
 const VIEWS = [
   { id: 'board', label: 'Board' },
   { id: 'list', label: 'Lista' },
+  { id: 'gantt', label: 'Gantt' },
   { id: 'dashboard', label: 'Painel' },
 ]
 
@@ -41,17 +45,19 @@ export default function AppPage() {
   }, [listId, lists, activeList?.id, selectList])
 
   // state → URL (sidebar chama navigate diretamente; aqui só normalizamos
-  // quando a lista ativa muda mas a URL ainda não, ex. depois de excluir)
+  // quando a lista ativa muda mas a URL ainda não, ex. depois de excluir).
+  // Preserva ?query=string (filtros) ao mudar de path.
   useEffect(() => {
+    const search = window.location.search
     if (!activeSpace) {
-      if (spaceId) navigate('/', { replace: true })
+      if (spaceId) navigate({ pathname: '/', search }, { replace: true })
       return
     }
     const want = activeList
       ? `/space/${activeSpace.id}/list/${activeList.id}`
       : `/space/${activeSpace.id}`
     if (window.location.pathname !== want) {
-      navigate(want, { replace: true })
+      navigate({ pathname: want, search }, { replace: true })
     }
   }, [activeSpace, activeList])
 
@@ -77,10 +83,15 @@ export default function AppPage() {
                   </button>
                 ))}
               </nav>
+              <div className={styles.topbarRight}>
+                <SavedViewsMenu currentView={activeView} setView={setActiveView} />
+              </div>
             </header>
+            {activeView !== 'dashboard' && <FilterBar />}
             <div className={styles.content}>
               {activeView === 'board' && <BoardView />}
               {activeView === 'list' && <ListView />}
+              {activeView === 'gantt' && <GanttView />}
               {activeView === 'dashboard' && <DashboardView />}
             </div>
           </>

@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useTasks } from '../../hooks/useTasks'
 import { useApp } from '../../hooks/useApp'
+import { useAuth } from '../../hooks/useAuth'
+import { useTaskFilters, applyFilters } from '../../hooks/useTaskFilters'
 import { format, isPast, isToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import TaskDetailModal from '../board/TaskDetailModal'
@@ -12,13 +14,19 @@ const PRIORITY_CLASS = { high: 'priorityHigh', medium: 'priorityMed', low: 'prio
 
 export default function ListView() {
   const { activeList } = useApp()
+  const { user } = useAuth()
   const { statuses, tasks, loading } = useTasks(activeList?.id)
+  const { filters } = useTaskFilters()
+  const filteredTasks = useMemo(
+    () => applyFilters(tasks, statuses, filters, user?.id),
+    [tasks, statuses, filters, user?.id]
+  )
   const [selectedTask, setSelectedTask] = useState(null)
   const [showNewTask, setShowNewTask] = useState(false)
   const [sortBy, setSortBy] = useState('position')
   const [groupBy, setGroupBy] = useState('none')
 
-  const sorted = [...tasks].sort((a, b) => {
+  const sorted = [...filteredTasks].sort((a, b) => {
     if (sortBy === 'priority') {
       const order = { high: 0, medium: 1, low: 2 }
       return order[a.priority] - order[b.priority]
@@ -49,7 +57,9 @@ export default function ListView() {
     <>
       <div className={styles.wrapper}>
         <div className={styles.toolbar}>
-          <span className={styles.count}>{tasks.length} tarefas</span>
+          <span className={styles.count}>
+            {filteredTasks.length} {filteredTasks.length === tasks.length ? 'tarefas' : `de ${tasks.length}`}
+          </span>
           <div className={styles.sortRow}>
             <span className={styles.sortLabel}>Agrupar</span>
             <select className={styles.sortSelect} value={groupBy} onChange={e => setGroupBy(e.target.value)}>

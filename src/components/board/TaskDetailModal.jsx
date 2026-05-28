@@ -5,18 +5,28 @@ import { useAuth } from '../../hooks/useAuth'
 import { useApp } from '../../hooks/useApp'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import AssigneePicker from '../task/AssigneePicker'
+import SubtaskRow from '../task/SubtaskRow'
+import AttachmentsTab from '../task/AttachmentsTab'
+import DependenciesTab from '../task/DependenciesTab'
 import modalStyles from '../shared/Modal.module.css'
 import styles from './TaskDetail.module.css'
 
 export default function TaskDetailModal({ task, statuses, listId, onClose }) {
-  const { updateTask, softDeleteTask, undoDeleteTask } = useTasks(listId)
+  const { updateTask, softDeleteTask, setAssignees } = useTasks(listId)
   const { user } = useAuth()
-  const { showUndo } = useApp()
+  const { activeSpace } = useApp()
+
+  const [tab, setTab] = useState('details')
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description ?? '')
   const [priority, setPriority] = useState(task.priority)
   const [statusId, setStatusId] = useState(task.status_id)
+  const [startDate, setStartDate] = useState(task.start_date ?? '')
   const [dueDate, setDueDate] = useState(task.due_date ?? '')
+  const [assigneeIds, setAssigneeIds] = useState(
+    (task.task_assignees ?? []).map(a => a.user_id)
+  )
   const [subtasks, setSubtasks] = useState(task.subtasks ?? [])
   const [comments, setComments] = useState([])
   const [newSubtask, setNewSubtask] = useState('')
@@ -24,19 +34,37 @@ export default function TaskDetailModal({ task, statuses, listId, onClose }) {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => { fetchComments() }, [task.id])
+  useEffect(() => { refetchSubtasks() }, [task.id])
 
   async function fetchComments() {
     const { data } = await supabase
       .from('comments')
-      .select('*, profiles(name)')
+      .select('*, profiles(name, avatar_url)')
       .eq('task_id', task.id)
       .order('created_at')
     setComments(data ?? [])
   }
 
+  async function refetchSubtasks() {
+    const { data } = await supabase
+      .from('subtasks')
+      .select('*')
+      .eq('task_id', task.id)
+      .order('position')
+    setSubtasks(data ?? [])
+  }
+
   async function handleSave() {
     setSaving(true)
-    await updateTask(task.id, { title, description, priority, status_id: statusId, due_date: dueDate || null })
+    await updateTask(task.id, {
+      title,
+      description,
+      priority,
+      status_id: statusId,
+      start_date: startDate || null,
+      due_date: dueDate || null,
+    })
+    await setAssignees(task.id, assigneeIds)
     setSaving(false)
     onClose()
   }
@@ -46,17 +74,21 @@ export default function TaskDetailModal({ task, statuses, listId, onClose }) {
     onClose()
   }
 
-  async function toggleSubtask(id, done) {
-    await supabase.from('subtasks').update({ done: !done }).eq('id', id)
-    setSubtasks(prev => prev.map(s => s.id === id ? { ...s, done: !done } : s))
-  }
-
   async function addSubtask(e) {
     e.preventDefault()
     if (!newSubtask.trim()) return
-    const { data } = await supabase.from('subtasks').insert({ task_id: task.id, title: newSubtask.trim(), position: subtasks.length }).select().single()
+    const { data } = await supabase
+      .from('subtasks')
+      .insert({ task_id: task.id, title: newSubtask.trim(), position: subtasks.length })
+      .select()
+      .single()
     if (data) setSubtasks(prev => [...prev, data])
     setNewSubtask('')
+  }
+
+  async function deleteSubtask(id) {
+    await supabase.from('subtasks').delete().eq('id', id)
+    setSubtasks(prev => prev.filter(s => s.id !== id))
   }
 
   async function addComment(e) {
@@ -65,6 +97,10 @@ export default function TaskDetailModal({ task, statuses, listId, onClose }) {
     await supabase.from('comments').insert({ task_id: task.id, user_id: user.id, content: newComment.trim() })
     setNewComment('')
     fetchComments()
+  }
+
+  function getInitials(n) {
+    return n?.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() ?? '?'
   }
 
   const doneCount = subtasks.filter(s => s.done).length
@@ -88,60 +124,107 @@ export default function TaskDetailModal({ task, statuses, listId, onClose }) {
           </div>
         </div>
 
+        <nav className={styles.tabs}>
+          {[
+            { id: 'details', label: 'Detalhes' },
+            { id: 'attachments', label: 'Anexos' },
+            { id: 'dependencies', label: 'Dependências' },
+          ].map(t => (
+            <button
+              key={t.id}
+              className={`${styles.tab} ${tab === t.id ? styles.tabActive : ''}`}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+
         <div className={styles.body}>
           <div className={styles.main}>
-            <div className={modalStyles.field}>
-              <label>Título</label>
-              <input type="text" value={title} onChange={e => setTitle(e.target.value)} />
-            </div>
-            <div className={modalStyles.field}>
-              <label>Descrição</label>
-              <textarea rows={3} placeholder="Detalhes..." value={description} onChange={e => setDescription(e.target.value)} />
-            </div>
-            <div className={styles.metaRow}>
-              <div className={modalStyles.field}>
-                <label>Status</label>
-                <select value={statusId} onChange={e => setStatusId(e.target.value)}>
-                  {statuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-              <div className={modalStyles.field}>
-                <label>Prioridade</label>
-                <select value={priority} onChange={e => setPriority(e.target.value)}>
-                  <option value="high">Alta</option>
-                  <option value="medium">Média</option>
-                  <option value="low">Baixa</option>
-                </select>
-              </div>
-              <div className={modalStyles.field}>
-                <label>Prazo</label>
-                <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
-              </div>
-            </div>
-
-            <div className={styles.section}>
-              <div className={styles.sectionHeader}>
-                <span className={styles.sectionTitle}>Subtarefas</span>
-                {subtasks.length > 0 && <span className={styles.sectionCount}>{doneCount}/{subtasks.length}</span>}
-              </div>
-              {subtasks.length > 0 && (
-                <div className={styles.progressBar}>
-                  <div className={styles.progressFill} style={{ width: `${(doneCount / subtasks.length) * 100}%` }} />
+            {tab === 'details' && (
+              <>
+                <div className={modalStyles.field}>
+                  <label>Título</label>
+                  <input type="text" value={title} onChange={e => setTitle(e.target.value)} />
                 </div>
-              )}
-              <div className={styles.subtaskList}>
-                {subtasks.map(s => (
-                  <label key={s.id} className={styles.subtaskItem}>
-                    <input type="checkbox" checked={s.done} onChange={() => toggleSubtask(s.id, s.done)} className={styles.checkbox} />
-                    <span className={s.done ? styles.subtaskDone : ''}>{s.title}</span>
-                  </label>
-                ))}
-              </div>
-              <form onSubmit={addSubtask} className={styles.addSubtask}>
-                <input type="text" placeholder="Adicionar subtarefa..." value={newSubtask} onChange={e => setNewSubtask(e.target.value)} />
-                <button type="submit" className={styles.addSubtaskBtn} aria-label="Adicionar">+</button>
-              </form>
-            </div>
+                <div className={modalStyles.field}>
+                  <label>Descrição</label>
+                  <textarea rows={3} placeholder="Detalhes..." value={description} onChange={e => setDescription(e.target.value)} />
+                </div>
+
+                <div className={styles.metaRow}>
+                  <div className={modalStyles.field}>
+                    <label>Status</label>
+                    <select value={statusId} onChange={e => setStatusId(e.target.value)}>
+                      {statuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </div>
+                  <div className={modalStyles.field}>
+                    <label>Prioridade</label>
+                    <select value={priority} onChange={e => setPriority(e.target.value)}>
+                      <option value="high">Alta</option>
+                      <option value="medium">Média</option>
+                      <option value="low">Baixa</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className={styles.metaRow}>
+                  <div className={modalStyles.field}>
+                    <label>Início</label>
+                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                  </div>
+                  <div className={modalStyles.field}>
+                    <label>Prazo</label>
+                    <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                  </div>
+                </div>
+
+                <div className={modalStyles.field}>
+                  <label>Responsáveis</label>
+                  <AssigneePicker
+                    value={assigneeIds}
+                    multi={true}
+                    onChange={setAssigneeIds}
+                  />
+                </div>
+
+                <div className={styles.section}>
+                  <div className={styles.sectionHeader}>
+                    <span className={styles.sectionTitle}>Subtarefas</span>
+                    {subtasks.length > 0 && <span className={styles.sectionCount}>{doneCount}/{subtasks.length}</span>}
+                  </div>
+                  {subtasks.length > 0 && (
+                    <div className={styles.progressBar}>
+                      <div className={styles.progressFill} style={{ width: `${(doneCount / subtasks.length) * 100}%` }} />
+                    </div>
+                  )}
+                  <div className={styles.subtaskList}>
+                    {subtasks.map(s => (
+                      <SubtaskRow
+                        key={s.id}
+                        subtask={s}
+                        onUpdate={refetchSubtasks}
+                        onDelete={deleteSubtask}
+                      />
+                    ))}
+                  </div>
+                  <form onSubmit={addSubtask} className={styles.addSubtask}>
+                    <input type="text" placeholder="Adicionar subtarefa..." value={newSubtask} onChange={e => setNewSubtask(e.target.value)} />
+                    <button type="submit" className={styles.addSubtaskBtn} aria-label="Adicionar">+</button>
+                  </form>
+                </div>
+              </>
+            )}
+
+            {tab === 'attachments' && (
+              <AttachmentsTab taskId={task.id} spaceId={activeSpace?.id} />
+            )}
+
+            {tab === 'dependencies' && (
+              <DependenciesTab task={task} />
+            )}
           </div>
 
           <div className={styles.sidebar}>
@@ -150,7 +233,11 @@ export default function TaskDetailModal({ task, statuses, listId, onClose }) {
               <div className={styles.commentList}>
                 {comments.map(c => (
                   <div key={c.id} className={styles.comment}>
-                    <span className={styles.commentAvatar}>{c.profiles?.name?.[0]?.toUpperCase() ?? '?'}</span>
+                    <span className={styles.commentAvatar}>
+                      {c.profiles?.avatar_url
+                        ? <img src={c.profiles.avatar_url} alt="" />
+                        : (c.profiles?.name?.[0]?.toUpperCase() ?? '?')}
+                    </span>
                     <div className={styles.commentBody}>
                       <div className={styles.commentMeta}>
                         <span className={styles.commentAuthor}>{c.profiles?.name}</span>
