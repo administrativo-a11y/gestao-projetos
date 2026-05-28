@@ -1,10 +1,34 @@
 .detailModal {
-  max-width: 760px;
+  max-width: 820px;
   max-height: 88vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
+
+.tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 24px;
+  border-top: 0.5px solid var(--color-border);
+  border-bottom: 0.5px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.tab {
+  padding: 9px 14px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -0.5px;
+  transition: color 0.12s, border-color 0.12s;
+}
+.tab:hover { color: var(--color-text-primary); }
+.tabActive { color: var(--color-text-primary); border-bottom-color: var(--color-accent); font-weight: 500; }
 
 .body {
   display: grid;
@@ -12,7 +36,6 @@
   gap: 0;
   flex: 1;
   overflow: hidden;
-  border-top: 0.5px solid var(--color-border);
 }
 
 .main {
@@ -32,7 +55,7 @@
 
 .metaRow {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
 

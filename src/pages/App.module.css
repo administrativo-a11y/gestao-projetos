@@ -63,7 +63,8 @@
   flex-shrink: 0;
 }
 
-.topbarLeft { display: flex; align-items: center; gap: 8px; }
+.topbarLeft { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.topbarRight { display: flex; align-items: center; gap: 8px; }
 .listName { font-size: 15px; font-weight: 500; color: var(--color-text-primary); letter-spacing: -0.01em; }
 
 .tabs { display: flex; gap: 2px; background: var(--color-surface-2); border-radius: 8px; padding: 3px; border: 0.5px solid var(--color-border); }

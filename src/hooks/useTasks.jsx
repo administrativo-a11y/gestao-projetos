@@ -16,9 +16,9 @@ export function useTasks(listId) {
       supabase.from('list_statuses').select('*').eq('list_id', listId).order('position'),
       supabase.from('tasks').select(`
         *,
-        task_assignees(user_id, profiles(id, name)),
+        task_assignees(user_id, profiles(id, name, avatar_url)),
         task_tags(tag_id, tags(id, name, color)),
-        subtasks(id, done)
+        subtasks(id, done, title, assignee_id, due_date, description, position)
       `).eq('list_id', listId).is('deleted_at', null).order('position'),
     ])
     setStatuses(statusRes.data ?? [])
@@ -74,9 +74,31 @@ export function useTasks(listId) {
     await fetchAll()
   }
 
+  async function setAssignees(taskId, newUserIds) {
+    const task = tasks.find(t => t.id === taskId)
+    const current = (task?.task_assignees ?? []).map(a => a.user_id)
+    const toAdd = newUserIds.filter(id => !current.includes(id))
+    const toRemove = current.filter(id => !newUserIds.includes(id))
+
+    if (toAdd.length > 0) {
+      await supabase
+        .from('task_assignees')
+        .insert(toAdd.map(uid => ({ task_id: taskId, user_id: uid })))
+    }
+    if (toRemove.length > 0) {
+      await supabase
+        .from('task_assignees')
+        .delete()
+        .eq('task_id', taskId)
+        .in('user_id', toRemove)
+    }
+    await fetchAll()
+  }
+
   return {
     statuses, tasks, members, loading,
     createTask, updateTask, moveTask, softDeleteTask, undoDeleteTask,
+    setAssignees,
     refetch: fetchAll
   }
 }

@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { useTasks } from '../../hooks/useTasks'
 import { useApp } from '../../hooks/useApp'
+import { useAuth } from '../../hooks/useAuth'
+import { useTaskFilters, applyFilters } from '../../hooks/useTaskFilters'
 import { format, isPast, isToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import NewTaskModal from './NewTaskModal'
@@ -10,12 +12,18 @@ import styles from './Board.module.css'
 
 export default function BoardView() {
   const { activeList } = useApp()
+  const { user } = useAuth()
   const { statuses, tasks, loading, moveTask } = useTasks(activeList?.id)
+  const { filters } = useTaskFilters()
+  const filteredTasks = useMemo(
+    () => applyFilters(tasks, statuses, filters, user?.id),
+    [tasks, statuses, filters, user?.id]
+  )
   const [newTaskStatus, setNewTaskStatus] = useState(null)
   const [selectedTask, setSelectedTask] = useState(null)
 
   function getStatusTasks(statusId) {
-    return tasks.filter(t => t.status_id === statusId).sort((a, b) => a.position - b.position)
+    return filteredTasks.filter(t => t.status_id === statusId).sort((a, b) => a.position - b.position)
   }
 
   async function onDragEnd(result) {
