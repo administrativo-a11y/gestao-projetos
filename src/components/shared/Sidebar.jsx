@@ -1,6 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useApp } from '../../hooks/useApp'
+import { useTheme } from '../../hooks/useTheme'
+import ProfileModal from './ProfileModal'
+import SpaceSettingsModal from '../space/SpaceSettingsModal'
+import FolderPermissionsPanel from '../folder/FolderPermissionsPanel'
 import styles from './Sidebar.module.css'
 
 const COLORS = ['#1D9E75','#378ADD','#EF9F27','#7F77DD','#E24B4A','#D4537E']
@@ -37,8 +41,15 @@ const ListIcon = () => (
   </svg>
 )
 
+const Lock = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+    <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+  </svg>
+)
+
 export default function Sidebar() {
   const { profile, signOut } = useAuth()
+  const { preference: themePref, setTheme } = useTheme()
   const {
     spaces, activeSpace, setActiveSpace,
     folders, lists, activeList, selectList,
@@ -49,14 +60,20 @@ export default function Sidebar() {
   } = useApp()
 
   const [spaceDropdown, setSpaceDropdown] = useState(false)
+  const [userMenu, setUserMenu] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
+  const [showSpaceSettings, setShowSpaceSettings] = useState(false)
+  const [permissionsFolder, setPermissionsFolder] = useState(null)
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState({ name: '', color: COLORS[0], useSpaceStatuses: true, folderId: null })
   const [saving, setSaving] = useState(false)
   const dropdownRef = useRef(null)
+  const userMenuRef = useRef(null)
 
   useEffect(() => {
     function handleClick(e) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setSpaceDropdown(false)
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) setUserMenu(false)
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
@@ -159,6 +176,9 @@ export default function Sidebar() {
                         <span className={styles.treeName}>{folder.name}</span>
                       </button>
                       <div className={styles.rowActions}>
+                        <button className={styles.iconBtn} onClick={() => setPermissionsFolder(folder)} aria-label="Permissões da pasta" title="Permissões">
+                          <Lock />
+                        </button>
                         <button className={styles.iconBtn} onClick={() => openModal('list', { folderId: folder.id })} aria-label="Nova lista na pasta">
                           <Plus />
                         </button>
@@ -221,16 +241,67 @@ export default function Sidebar() {
         )}
 
         {/* Footer */}
-        <div className={styles.footer}>
+        <div className={styles.footer} ref={userMenuRef}>
           <div className={styles.userRow}>
-            <div className={styles.avatar}>{getInitials(profile?.name)}</div>
-            <div className={styles.userInfo}>
-              <span className={styles.userName}>{profile?.name ?? 'Usuário'}</span>
-              <button className={styles.signoutBtn} onClick={signOut}>Sair</button>
-            </div>
+            <button className={styles.userTrigger} onClick={() => setUserMenu(v => !v)}>
+              <div className={styles.avatar}>
+                {profile?.avatar_url
+                  ? <img src={profile.avatar_url} alt="" />
+                  : getInitials(profile?.name)}
+              </div>
+              <div className={styles.userInfo}>
+                <span className={styles.userName}>{profile?.name ?? 'Usuário'}</span>
+                <span className={styles.userEmail}>{profile?.email}</span>
+              </div>
+            </button>
           </div>
+
+          {userMenu && (
+            <div className={styles.userMenu}>
+              <button className={styles.menuItem} onClick={() => { setUserMenu(false); setShowProfile(true) }}>
+                Editar perfil
+              </button>
+              {activeSpace && (
+                <button className={styles.menuItem} onClick={() => { setUserMenu(false); setShowSpaceSettings(true) }}>
+                  Configurações do espaço
+                </button>
+              )}
+              <div className={styles.menuSeparator} />
+              <div className={styles.menuLabel}>Tema</div>
+              <div className={styles.themeRow}>
+                {[
+                  { id: 'light', label: 'Claro' },
+                  { id: 'dark', label: 'Escuro' },
+                  { id: 'system', label: 'Sistema' },
+                ].map(t => (
+                  <button
+                    key={t.id}
+                    className={`${styles.themeChip} ${themePref === t.id ? styles.themeChipActive : ''}`}
+                    onClick={() => setTheme(t.id)}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+              <div className={styles.menuSeparator} />
+              <button className={`${styles.menuItem} ${styles.menuItemDanger}`} onClick={signOut}>
+                Sair
+              </button>
+            </div>
+          )}
         </div>
       </aside>
+
+      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
+      {showSpaceSettings && activeSpace && (
+        <SpaceSettingsModal space={activeSpace} onClose={() => setShowSpaceSettings(false)} />
+      )}
+      {permissionsFolder && (
+        <FolderPermissionsPanel
+          folder={permissionsFolder}
+          onClose={() => setPermissionsFolder(null)}
+        />
+      )}
 
       {/* Modal */}
       {modal && (

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTasks } from '../../hooks/useTasks'
+import { useApp } from '../../hooks/useApp'
 import { format, isPast, isToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import TaskDetailModal from '../board/TaskDetailModal'
@@ -9,11 +10,13 @@ import styles from './ListView.module.css'
 const PRIORITY_LABEL = { high: 'Alta', medium: 'Média', low: 'Baixa' }
 const PRIORITY_CLASS = { high: 'priorityHigh', medium: 'priorityMed', low: 'priorityLow' }
 
-export default function ListView({ projectId }) {
-  const { columns, tasks, members, loading } = useTasks(projectId)
+export default function ListView() {
+  const { activeList } = useApp()
+  const { statuses, tasks, loading } = useTasks(activeList?.id)
   const [selectedTask, setSelectedTask] = useState(null)
   const [showNewTask, setShowNewTask] = useState(false)
   const [sortBy, setSortBy] = useState('position')
+  const [groupBy, setGroupBy] = useState('none')
 
   const sorted = [...tasks].sort((a, b) => {
     if (sortBy === 'priority') {
@@ -28,15 +31,19 @@ export default function ListView({ projectId }) {
     return a.position - b.position
   })
 
-  function getColumnName(colId) {
-    return columns.find(c => c.id === colId)?.name ?? ''
+  function getStatus(statusId) {
+    return statuses.find(s => s.id === statusId)
   }
 
-  function getColumnColor(colId) {
-    return columns.find(c => c.id === colId)?.color ?? '#888'
-  }
+  const doneStatusId = statuses.find(s => /conclu/i.test(s.name))?.id
 
+  if (!activeList) return null
   if (loading) return <div className={styles.loading}>Carregando...</div>
+
+  // Agrupado por status
+  const groups = groupBy === 'status'
+    ? statuses.map(s => ({ status: s, items: sorted.filter(t => t.status_id === s.id) }))
+    : [{ status: null, items: sorted }]
 
   return (
     <>
@@ -44,7 +51,12 @@ export default function ListView({ projectId }) {
         <div className={styles.toolbar}>
           <span className={styles.count}>{tasks.length} tarefas</span>
           <div className={styles.sortRow}>
-            <span className={styles.sortLabel}>Ordenar por</span>
+            <span className={styles.sortLabel}>Agrupar</span>
+            <select className={styles.sortSelect} value={groupBy} onChange={e => setGroupBy(e.target.value)}>
+              <option value="none">Sem agrupamento</option>
+              <option value="status">Status</option>
+            </select>
+            <span className={styles.sortLabel}>Ordenar</span>
             <select className={styles.sortSelect} value={sortBy} onChange={e => setSortBy(e.target.value)}>
               <option value="position">Padrão</option>
               <option value="priority">Prioridade</option>
@@ -53,65 +65,84 @@ export default function ListView({ projectId }) {
           </div>
         </div>
 
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th className={styles.thTitle}>Tarefa</th>
-              <th className={styles.th}>Status</th>
-              <th className={styles.th}>Responsável</th>
-              <th className={styles.th}>Prazo</th>
-              <th className={styles.th}>Prioridade</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map(task => (
-              <tr key={task.id} className={styles.row} onClick={() => setSelectedTask(task)} tabIndex={0} onKeyDown={e => e.key === 'Enter' && setSelectedTask(task)}>
-                <td className={styles.tdTitle}>{task.title}</td>
-                <td className={styles.td}>
-                  <span
-                    className={styles.statusPill}
-                    style={{
-                      background: getColumnColor(task.column_id) + '22',
-                      color: getColumnColor(task.column_id)
-                    }}
-                  >
-                    {getColumnName(task.column_id)}
-                  </span>
-                </td>
-                <td className={styles.td}>
-                  <div className={styles.assignees}>
-                    {task.task_assignees?.map(a => (
-                      <span key={a.user_id} className={styles.avatar} title={a.profiles?.name}>
-                        {a.profiles?.avatar_initials ?? '?'}
-                      </span>
-                    ))}
-                    {task.task_assignees?.length === 0 && (
-                      <span className={styles.none}>—</span>
-                    )}
-                  </div>
-                </td>
-                <td className={styles.td}>
-                  {task.due_date ? (
-                    <span className={`${styles.dueDate} ${
-                      isPast(new Date(task.due_date)) && getColumnName(task.column_id) !== 'Concluído'
-                        ? styles.overdue
-                        : isToday(new Date(task.due_date))
-                        ? styles.today
-                        : ''
-                    }`}>
-                      {format(new Date(task.due_date), 'dd MMM', { locale: ptBR })}
-                    </span>
-                  ) : <span className={styles.none}>—</span>}
-                </td>
-                <td className={styles.td}>
-                  <span className={styles[PRIORITY_CLASS[task.priority]]}>
-                    {PRIORITY_LABEL[task.priority]}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {groups.map((group, gi) => (
+          <div key={group.status?.id ?? `g${gi}`} className={styles.group}>
+            {group.status && (
+              <div className={styles.groupHeader}>
+                <span className={styles.groupDot} style={{ background: group.status.color }} />
+                <span className={styles.groupName}>{group.status.name}</span>
+                <span className={styles.groupCount}>{group.items.length}</span>
+              </div>
+            )}
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th className={styles.thTitle}>Tarefa</th>
+                  <th className={styles.th}>Status</th>
+                  <th className={styles.th}>Responsável</th>
+                  <th className={styles.th}>Prazo</th>
+                  <th className={styles.th}>Prioridade</th>
+                </tr>
+              </thead>
+              <tbody>
+                {group.items.map(task => {
+                  const status = getStatus(task.status_id)
+                  return (
+                    <tr
+                      key={task.id}
+                      className={styles.row}
+                      onClick={() => setSelectedTask(task)}
+                      tabIndex={0}
+                      onKeyDown={e => e.key === 'Enter' && setSelectedTask(task)}
+                    >
+                      <td className={styles.tdTitle}>{task.title}</td>
+                      <td className={styles.td}>
+                        {status && (
+                          <span
+                            className={styles.statusPill}
+                            style={{ background: status.color + '22', color: status.color }}
+                          >
+                            {status.name}
+                          </span>
+                        )}
+                      </td>
+                      <td className={styles.td}>
+                        <div className={styles.assignees}>
+                          {task.task_assignees?.map(a => (
+                            <span key={a.user_id} className={styles.avatar} title={a.profiles?.name}>
+                              {a.profiles?.name?.[0]?.toUpperCase() ?? '?'}
+                            </span>
+                          ))}
+                          {(!task.task_assignees || task.task_assignees.length === 0) && (
+                            <span className={styles.none}>—</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className={styles.td}>
+                        {task.due_date ? (
+                          <span className={`${styles.dueDate} ${
+                            isPast(new Date(task.due_date)) && task.status_id !== doneStatusId
+                              ? styles.overdue
+                              : isToday(new Date(task.due_date))
+                              ? styles.today
+                              : ''
+                          }`}>
+                            {format(new Date(task.due_date), 'dd MMM', { locale: ptBR })}
+                          </span>
+                        ) : <span className={styles.none}>—</span>}
+                      </td>
+                      <td className={styles.td}>
+                        <span className={styles[PRIORITY_CLASS[task.priority]]}>
+                          {PRIORITY_LABEL[task.priority]}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ))}
 
         <button className={styles.addRow} onClick={() => setShowNewTask(true)}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -124,17 +155,16 @@ export default function ListView({ projectId }) {
       {selectedTask && (
         <TaskDetailModal
           task={selectedTask}
-          projectId={projectId}
-          members={members}
-          columns={columns}
+          statuses={statuses}
+          listId={activeList.id}
           onClose={() => setSelectedTask(null)}
         />
       )}
 
-      {showNewTask && columns.length > 0 && (
+      {showNewTask && statuses.length > 0 && (
         <NewTaskModal
-          columnId={columns[0].id}
-          projectId={projectId}
+          statusId={statuses[0].id}
+          listId={activeList.id}
           onClose={() => setShowNewTask(false)}
         />
       )}
