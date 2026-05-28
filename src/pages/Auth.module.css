@@ -138,3 +138,73 @@
 }
 
 .toggleBtn:hover { color: var(--color-accent-hover); }
+
+.passwordWrap {
+  position: relative;
+}
+
+.passwordWrap input {
+  width: 100%;
+  padding-right: 38px;
+}
+
+.eyeBtn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+.eyeBtn:hover { color: var(--color-text-primary); background: var(--color-surface-2); }
+
+.fieldHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.forgotBtn {
+  font-size: 11px;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: var(--font-sans);
+  transition: color 0.12s;
+}
+.forgotBtn:hover { color: var(--color-accent-hover); text-decoration: underline; }
+
+.backBtn {
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: var(--font-sans);
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  transition: color 0.12s;
+}
+.backBtn:hover { color: var(--color-text-primary); }
+
+.hint {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  margin-bottom: 4px;
+  line-height: 1.5;
+}
