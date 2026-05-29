@@ -2,8 +2,10 @@ import { useState, useMemo } from 'react'
 import { useTasks } from '../../hooks/useTasks'
 import { useApp } from '../../hooks/useApp'
 import { useAuth } from '../../hooks/useAuth'
+import { useCustomFields } from '../../hooks/useCustomFields'
 import { useTaskFilters, applyFilters } from '../../hooks/useTaskFilters'
 import { useTaskFromQuery, taskShareUrl } from '../../hooks/useTaskFromQuery'
+import CustomFieldDisplay from '../task/CustomFieldDisplay'
 import { format, isPast, isToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import TaskDetailModal from '../board/TaskDetailModal'
@@ -18,6 +20,7 @@ export default function ListView() {
   const { activeList } = useApp()
   const { user } = useAuth()
   const { statuses, tasks, loading, toggleDone, duplicateTask, softDeleteTask } = useTasks(activeList?.id)
+  const { fields: customFields } = useCustomFields(activeList?.id)
   const { filters } = useTaskFilters()
   const filteredTasks = useMemo(
     () => applyFilters(tasks, statuses, filters, user?.id),
@@ -107,6 +110,9 @@ export default function ListView() {
                   <th className={styles.th}>Responsável</th>
                   <th className={styles.th}>Prazo</th>
                   <th className={styles.th}>Prioridade</th>
+                  {customFields.map(f => (
+                    <th key={f.id} className={styles.th}>{f.name}</th>
+                  ))}
                   <th className={styles.thActions} aria-label="Ações" />
                 </tr>
               </thead>
@@ -163,6 +169,14 @@ export default function ListView() {
                           {PRIORITY_LABEL[task.priority]}
                         </span>
                       </td>
+                      {customFields.map(f => {
+                        const fv = (task.task_field_values ?? []).find(v => v.field_id === f.id)
+                        return (
+                          <td key={f.id} className={styles.td}>
+                            <CustomFieldDisplay field={f} value={fv?.value} />
+                          </td>
+                        )
+                      })}
                       <td className={styles.tdActions}>
                         <div className={styles.actionsWrap}>
                           <TaskQuickActions

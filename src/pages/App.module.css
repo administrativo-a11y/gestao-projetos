@@ -204,6 +204,24 @@
 .topbarRight { display: flex; align-items: center; gap: 8px; }
 .listName { font-size: 15px; font-weight: 500; color: var(--color-text-primary); letter-spacing: -0.01em; }
 
+.listGearBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+.listGearBtn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-2);
+}
+
 .tabs { display: flex; gap: 2px; background: var(--color-surface-2); border-radius: 8px; padding: 3px; border: 0.5px solid var(--color-border); }
 .tab { display: flex; align-items: center; gap: 5px; padding: 5px 14px; border-radius: 6px; font-size: 12px; color: var(--color-text-secondary); background: none; border: none; cursor: pointer; transition: background 0.12s, color 0.12s; font-family: var(--font-sans); }
 .tab:hover:not(.tabActive) { color: var(--color-text-primary); }

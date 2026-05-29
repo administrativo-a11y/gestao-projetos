@@ -1,0 +1,317 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.note {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  line-height: 1.5;
+  padding: 10px 12px;
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+}
+.note strong { color: var(--color-text-secondary); }
+
+.loading {
+  padding: 20px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+}
+.rowDragging {
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+}
+
+.grip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  cursor: grab;
+  letter-spacing: -2px;
+  user-select: none;
+  padding: 0 2px;
+}
+
+.nameInput {
+  flex: 1;
+  background: transparent;
+  border: 0.5px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  outline: none;
+  min-width: 120px;
+}
+.nameInput:hover { border-color: var(--color-border); }
+.nameInput:focus {
+  border-color: var(--color-accent);
+  background: var(--color-surface);
+}
+
+.typeBadge {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  padding: 2px 8px;
+  border-radius: 99px;
+  border: 0.5px solid var(--color-border);
+}
+
+.linkBtn {
+  font-size: 12px;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+}
+.linkBtn:hover { background: var(--color-accent-light); }
+
+.deleteBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.12s, background 0.12s;
+}
+.deleteBtn:hover { color: var(--color-danger); background: var(--color-danger-light); }
+
+.addBtn {
+  align-self: flex-start;
+  font-size: 13px;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  font-family: var(--font-sans);
+}
+.addBtn:hover { color: var(--color-accent-hover); }
+
+.addForm {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.addInput {
+  flex: 1;
+  min-width: 160px;
+  padding: 6px 10px;
+  border: 0.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  outline: none;
+  font-family: var(--font-sans);
+}
+.addInput:focus { border-color: var(--color-accent); }
+
+.addSelect {
+  padding: 6px 10px;
+  border: 0.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  outline: none;
+  font-family: var(--font-sans);
+  cursor: pointer;
+}
+
+.addConfirm {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #fff;
+  background: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+.addConfirm:hover { background: var(--color-accent-hover); }
+
+.addCancel {
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+.addCancel:hover { color: var(--color-text-primary); }
+
+.error {
+  font-size: 12px;
+  color: var(--color-danger);
+  background: var(--color-danger-light);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+}
+
+/* Choices overlay */
+.choicesOverlay {
+  position: fixed;
+  inset: 0;
+  background: var(--color-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  padding: 20px;
+}
+
+.choicesModal {
+  width: 100%;
+  max-width: 480px;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.choicesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 0.5px solid var(--color-border);
+}
+
+.choicesTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.choicesClose {
+  font-size: 14px;
+  color: var(--color-text-tertiary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+}
+.choicesClose:hover { color: var(--color-text-primary); background: var(--color-surface-2); }
+
+.choicesWrap {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.empty {
+  padding: 18px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.choiceRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+}
+
+.choiceDot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+}
+.choiceDot input[type='color'] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.choiceInput {
+  flex: 1;
+  padding: 6px 10px;
+  border: 0.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  outline: none;
+  font-family: var(--font-sans);
+}
+.choiceInput:focus { border-color: var(--color-accent); }
+
+.choiceDelete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+.choiceDelete:hover { color: var(--color-danger); background: var(--color-danger-light); }
+
+.addChoice {
+  align-self: flex-start;
+  font-size: 12px;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  font-family: var(--font-sans);
+}
+.addChoice:hover { color: var(--color-accent-hover); }

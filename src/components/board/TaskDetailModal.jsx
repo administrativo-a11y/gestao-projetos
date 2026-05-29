@@ -10,11 +10,14 @@ import AssigneePicker from '../task/AssigneePicker'
 import SubtaskRow from '../task/SubtaskRow'
 import AttachmentsTab from '../task/AttachmentsTab'
 import DependenciesTab from '../task/DependenciesTab'
+import CustomFieldInput from '../task/CustomFieldInput'
+import { useCustomFields } from '../../hooks/useCustomFields'
 import modalStyles from '../shared/Modal.module.css'
 import styles from './TaskDetail.module.css'
 
 export default function TaskDetailModal({ task, statuses, listId, onClose }) {
-  const { updateTask, softDeleteTask, setAssignees } = useTasks(listId)
+  const { updateTask, softDeleteTask, setAssignees, setFieldValue } = useTasks(listId)
+  const { fields: customFields } = useCustomFields(listId)
   const { user } = useAuth()
   const { activeSpace } = useApp()
 
@@ -200,6 +203,29 @@ export default function TaskDetailModal({ task, statuses, listId, onClose }) {
                     onChange={setAssigneeIds}
                   />
                 </div>
+
+                {customFields.length > 0 && (
+                  <div className={styles.section}>
+                    <div className={styles.sectionHeader}>
+                      <span className={styles.sectionTitle}>Campos personalizados</span>
+                    </div>
+                    <div className={styles.customFieldsGrid}>
+                      {customFields.map(f => {
+                        const fv = (task.task_field_values ?? []).find(v => v.field_id === f.id)
+                        return (
+                          <div key={f.id} className={modalStyles.field}>
+                            <label>{f.name}</label>
+                            <CustomFieldInput
+                              field={f}
+                              value={fv?.value}
+                              onChange={(v) => setFieldValue(task.id, f.id, v)}
+                            />
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 <div className={styles.section}>
                   <div className={styles.sectionHeader}>
