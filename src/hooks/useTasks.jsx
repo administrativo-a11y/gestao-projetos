@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { useRealtimeSync } from './useRealtimeSync'
 
 export function useTasks(listId) {
   const { user } = useAuth()
@@ -29,6 +30,19 @@ export function useTasks(listId) {
   useEffect(() => {
     fetchAll()
   }, [fetchAll])
+
+  // Realtime: refetch quando qualquer coisa muda nas tabelas da tarefa.
+  // RLS no banco garante que só recebemos eventos do que podemos ver.
+  const subscriptions = useMemo(() => listId ? [
+    { table: 'tasks', filter: `list_id=eq.${listId}` },
+    { table: 'list_statuses', filter: `list_id=eq.${listId}` },
+    // subtasks/assignees/tags não têm list_id; subscrevemos sem filtro,
+    // RLS limita o que chega.
+    { table: 'subtasks' },
+    { table: 'task_assignees' },
+    { table: 'task_tags' },
+  ] : [], [listId])
+  useRealtimeSync(listId ? `tasks:${listId}` : null, subscriptions, fetchAll)
 
   async function createTask({ statusId, title, priority, dueDate }) {
     const maxPos = tasks.filter(t => t.status_id === statusId).length

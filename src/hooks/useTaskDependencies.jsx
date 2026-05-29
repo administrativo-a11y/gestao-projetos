@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
+import { useRealtimeSync } from './useRealtimeSync'
 
 // Hook por tarefa: fetch predecessores + sucessores
 export function useTaskDependencies(taskId) {
@@ -27,6 +28,11 @@ export function useTaskDependencies(taskId) {
   }, [taskId])
 
   useEffect(() => { refetch() }, [refetch])
+
+  const subs = useMemo(() => taskId ? [
+    { table: 'task_dependencies' },
+  ] : [], [taskId])
+  useRealtimeSync(taskId ? `deps:${taskId}` : null, subs, refetch)
 
   async function addPredecessor(predecessorId) {
     setError('')
@@ -87,6 +93,11 @@ export function useListDependencies(listId) {
   }, [listId])
 
   useEffect(() => { refetch() }, [refetch])
+
+  const subs = useMemo(() => listId ? [
+    { table: 'task_dependencies' },
+  ] : [], [listId])
+  useRealtimeSync(listId ? `list-deps:${listId}` : null, subs, refetch)
 
   return { deps, loading, refetch }
 }

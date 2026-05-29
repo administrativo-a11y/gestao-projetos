@@ -1,6 +1,7 @@
-import { useState, useEffect, createContext, useContext, useCallback } from 'react'
+import { useState, useEffect, createContext, useContext, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { useRealtimeSync } from './useRealtimeSync'
 
 const AppContext = createContext(null)
 
@@ -44,6 +45,23 @@ export function AppProvider({ children }) {
     if (activeSpace) fetchFoldersAndLists(activeSpace.id)
     else { setFolders([]); setLists([]) }
   }, [activeSpace, fetchFoldersAndLists])
+
+  // Realtime: espaços (sempre que mudam) + folders/lists do espaço ativo
+  const spacesSubs = useMemo(() => user ? [
+    { table: 'spaces' },
+    { table: 'space_members' },
+  ] : [], [user])
+  useRealtimeSync(user ? `spaces:${user.id}` : null, spacesSubs, fetchSpaces)
+
+  const treeSubs = useMemo(() => activeSpace ? [
+    { table: 'folders', filter: `space_id=eq.${activeSpace.id}` },
+    { table: 'lists', filter: `space_id=eq.${activeSpace.id}` },
+  ] : [], [activeSpace?.id])
+  useRealtimeSync(
+    activeSpace ? `tree:${activeSpace.id}` : null,
+    treeSubs,
+    () => activeSpace && fetchFoldersAndLists(activeSpace.id)
+  )
 
   // ── SPACE ──────────────────────────────────────────────────
 

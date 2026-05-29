@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { useRealtimeSync } from './useRealtimeSync'
 
 const BUCKET = 'task-attachments'
 
@@ -24,6 +25,11 @@ export function useTaskAttachments(taskId, spaceId) {
   }, [taskId])
 
   useEffect(() => { refetch() }, [refetch])
+
+  const subs = useMemo(() => taskId ? [
+    { table: 'task_attachments', filter: `task_id=eq.${taskId}` },
+  ] : [], [taskId])
+  useRealtimeSync(taskId ? `attachments:${taskId}` : null, subs, refetch)
 
   async function upload(file) {
     if (!user || !taskId || !spaceId) return { error: new Error('Faltam dados') }
