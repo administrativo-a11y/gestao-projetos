@@ -61,8 +61,10 @@ export default function AppPage() {
   const navigate = useNavigate()
   const {
     spaces, lists, activeList, activeSpace,
-    setActiveSpace, selectList,
+    setActiveSpace, selectList, updateList,
   } = useApp()
+  const [editingListName, setEditingListName] = useState(false)
+  const [draftListName, setDraftListName] = useState('')
   const [activeView, setActiveViewState] = useState('board')
   const [searchOpen, setSearchOpen] = useState(false)
   const [listSettingsOpen, setListSettingsOpen] = useState(false)
@@ -219,7 +221,32 @@ export default function AppPage() {
             <>
               <header className={styles.topbar}>
                 <div className={styles.topbarLeft}>
-                  <span className={styles.listName}>{activeList.name}</span>
+                  {editingListName ? (
+                    <input
+                      type="text"
+                      autoFocus
+                      className={styles.listNameInput}
+                      value={draftListName}
+                      onChange={e => setDraftListName(e.target.value)}
+                      onBlur={async () => {
+                        const name = draftListName.trim()
+                        if (name && name !== activeList.name) await updateList(activeList.id, { name })
+                        setEditingListName(false)
+                      }}
+                      onKeyDown={async e => {
+                        if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() }
+                        if (e.key === 'Escape') { e.preventDefault(); setEditingListName(false) }
+                      }}
+                    />
+                  ) : (
+                    <span
+                      className={styles.listName}
+                      onClick={() => { setDraftListName(activeList.name); setEditingListName(true) }}
+                      title="Clique para renomear"
+                    >
+                      {activeList.name}
+                    </span>
+                  )}
                   <button
                     className={styles.listGearBtn}
                     onClick={() => setListSettingsOpen(true)}

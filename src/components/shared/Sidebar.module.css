@@ -109,6 +109,20 @@
 .archivedItem { opacity: 0.55; }
 .archivedItem:hover { opacity: 0.85; }
 
+.renameInput {
+  flex: 1;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  font-size: 12.5px;
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  outline: none;
+  min-width: 0;
+  box-shadow: 0 0 0 3px var(--color-accent-light);
+}
+
 .tree { flex: 1; overflow-y: auto; padding: 4px 8px; }
 
 .treeRow {

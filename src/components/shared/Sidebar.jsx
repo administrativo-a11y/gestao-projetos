@@ -90,9 +90,9 @@ export default function Sidebar() {
     visibleFolders, visibleLists, activeList, selectList,
     showArchived, setShowArchived,
     expandedFolders, toggleFolder,
-    createSpace, softDeleteSpace,
-    createFolder, softDeleteFolder,
-    createList, softDeleteList,
+    createSpace, updateSpace, softDeleteSpace,
+    createFolder, updateFolder, softDeleteFolder,
+    createList, updateList, softDeleteList,
     archiveList, unarchiveList, archiveFolder, unarchiveFolder,
     duplicateList, duplicateFolder,
   } = useApp()
@@ -102,9 +102,12 @@ export default function Sidebar() {
   const [showProfile, setShowProfile] = useState(false)
   const [showSpaceSettings, setShowSpaceSettings] = useState(false)
   const [permissionsFolder, setPermissionsFolder] = useState(null)
+  // editingId: { kind: 'space'|'folder'|'list', id, draft }
+  const [editingId, setEditingId] = useState(null)
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState({ name: '', color: COLORS[0], useSpaceStatuses: true, folderId: null })
   const [saving, setSaving] = useState(false)
+  const [createError, setCreateError] = useState('')
   const dropdownRef = useRef(null)
   const userMenuRef = useRef(null)
 
@@ -119,21 +122,69 @@ export default function Sidebar() {
 
   function openModal(type, extra = {}) {
     setForm({ name: '', color: COLORS[0], useSpaceStatuses: true, folderId: null, ...extra })
+    setCreateError('')
     setModal(type)
   }
 
   async function handleCreate() {
     if (!form.name.trim()) return
     setSaving(true)
-    if (modal === 'space') await createSpace({ name: form.name, color: form.color })
-    if (modal === 'folder') await createFolder({ name: form.name })
-    if (modal === 'list') await createList({ name: form.name, folderId: form.folderId, useSpaceStatuses: form.useSpaceStatuses })
+    setCreateError('')
+    let result
+    if (modal === 'space') result = await createSpace({ name: form.name, color: form.color })
+    if (modal === 'folder') result = await createFolder({ name: form.name })
+    if (modal === 'list') result = await createList({ name: form.name, folderId: form.folderId, useSpaceStatuses: form.useSpaceStatuses })
     setSaving(false)
+    if (result?.error) {
+      const msg = result.error.message || String(result.error)
+      // Mensagem mais amigável pra RLS
+      const friendly = msg.includes('row-level security') || msg.includes('permission denied')
+        ? 'Você não tem permissão para criar isso neste espaço. Peça ao owner/admin para promover seu papel a "member" ou superior.'
+        : msg
+      setCreateError(friendly)
+      return
+    }
     setModal(null)
   }
 
   function getInitials(name) {
     return name?.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() ?? '?'
+  }
+
+  function startEditing(kind, id, currentName) {
+    setEditingId({ kind, id, draft: currentName })
+  }
+
+  async function commitEditing() {
+    if (!editingId) return
+    const name = editingId.draft.trim()
+    if (!name) { setEditingId(null); return }
+    if (editingId.kind === 'space') await updateSpace(editingId.id, { name })
+    if (editingId.kind === 'folder') await updateFolder(editingId.id, { name })
+    if (editingId.kind === 'list') await updateList(editingId.id, { name })
+    setEditingId(null)
+  }
+
+  function isEditing(kind, id) {
+    return editingId?.kind === kind && editingId?.id === id
+  }
+
+  function RenameInput({ kind, id }) {
+    return (
+      <input
+        type="text"
+        autoFocus
+        value={editingId.draft}
+        onChange={e => setEditingId(s => ({ ...s, draft: e.target.value }))}
+        onBlur={commitEditing}
+        onKeyDown={e => {
+          if (e.key === 'Enter') { e.preventDefault(); commitEditing() }
+          if (e.key === 'Escape') { e.preventDefault(); setEditingId(null) }
+        }}
+        onClick={e => e.stopPropagation()}
+        className={styles.renameInput}
+      />
+    )
   }
 
   // Listas sem pasta (direto no espaço)
@@ -146,13 +197,17 @@ export default function Sidebar() {
         {/* Dropdown de espaço — canto superior esquerdo */}
         <div className={styles.spaceBar} ref={dropdownRef}>
           <div className={styles.spaceRow}>
-            <button className={styles.spaceSelector} onClick={() => setSpaceDropdown(v => !v)}>
+            <button className={styles.spaceSelector} onClick={() => !isEditing('space', activeSpace?.id) && setSpaceDropdown(v => !v)}>
               {activeSpace ? (
                 <>
                   <span className={styles.spaceIcon} style={{ background: activeSpace.color }}>
                     {activeSpace.name[0].toUpperCase()}
                   </span>
-                  <span className={styles.spaceName}>{activeSpace.name}</span>
+                  {isEditing('space', activeSpace.id) ? (
+                    <RenameInput kind="space" id={activeSpace.id} />
+                  ) : (
+                    <span className={styles.spaceName}>{activeSpace.name}</span>
+                  )}
                 </>
               ) : (
                 <>
@@ -172,6 +227,7 @@ export default function Sidebar() {
                     </button>
                   }
                   items={[
+                    { label: 'Renomear', onClick: () => startEditing('space', activeSpace.id, activeSpace.name) },
                     { label: 'Configurações do espaço', onClick: () => setShowSpaceSettings(true) },
                     { separator: true },
                     {
@@ -233,10 +289,14 @@ export default function Sidebar() {
                 return (
                   <div key={folder.id} className={isArchived ? styles.archivedItem : ''}>
                     <div className={styles.treeRow}>
-                      <button className={styles.treeToggle} onClick={() => toggleFolder(folder.id)}>
+                      <button className={styles.treeToggle} onClick={() => !isEditing('folder', folder.id) && toggleFolder(folder.id)}>
                         <Chevron open={isOpen} />
                         {isArchived ? <Archive /> : <FolderIcon />}
-                        <span className={styles.treeName}>{folder.name}</span>
+                        {isEditing('folder', folder.id) ? (
+                          <RenameInput kind="folder" id={folder.id} />
+                        ) : (
+                          <span className={styles.treeName}>{folder.name}</span>
+                        )}
                       </button>
                       <div className={styles.rowActions}>
                         <ContextMenu
@@ -246,6 +306,7 @@ export default function Sidebar() {
                             </button>
                           }
                           items={[
+                            { label: 'Renomear', onClick: () => startEditing('folder', folder.id, folder.name) },
                             { label: 'Duplicar', icon: <Copy />, onClick: async () => {
                               const { error } = await duplicateFolder(folder.id)
                               if (error) alert(error.message)
@@ -277,10 +338,14 @@ export default function Sidebar() {
                             <div key={list.id} className={`${styles.listRow} ${listArchived ? styles.archivedItem : ''}`}>
                               <button
                                 className={`${styles.listBtn} ${activeList?.id === list.id ? styles.listActive : ''}`}
-                                onClick={() => selectList(list)}
+                                onClick={() => !isEditing('list', list.id) && selectList(list)}
                               >
                                 {listArchived ? <Archive /> : <ListIcon />}
-                                <span className={styles.treeName}>{list.name}</span>
+                                {isEditing('list', list.id) ? (
+                                  <RenameInput kind="list" id={list.id} />
+                                ) : (
+                                  <span className={styles.treeName}>{list.name}</span>
+                                )}
                               </button>
                               <ContextMenu
                                 trigger={
@@ -289,6 +354,7 @@ export default function Sidebar() {
                                   </button>
                                 }
                                 items={[
+                                  { label: 'Renomear', onClick: () => startEditing('list', list.id, list.name) },
                                   { label: 'Duplicar', icon: <Copy />, onClick: async () => {
                                     const { error } = await duplicateList(list.id)
                                     if (error) alert(error.message)
@@ -483,6 +549,19 @@ export default function Sidebar() {
                     </label>
                   </div>
                 </div>
+              )}
+
+              {createError && (
+                <p style={{
+                  fontSize: 12,
+                  color: 'var(--color-danger)',
+                  background: 'var(--color-danger-light)',
+                  padding: '8px 10px',
+                  borderRadius: 'var(--radius-sm)',
+                  marginTop: 4,
+                }}>
+                  {createError}
+                </p>
               )}
             </div>
 

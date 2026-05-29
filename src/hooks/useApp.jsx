@@ -133,6 +133,18 @@ export function AppProvider({ children }) {
     return { data, error }
   }
 
+  async function updateSpace(id, patch) {
+    const { error } = await supabase.from('spaces').update(patch).eq('id', id)
+    if (!error) {
+      await fetchSpaces()
+      // Mantém o activeSpace atualizado
+      if (activeSpace?.id === id) {
+        setActiveSpaceState(prev => prev ? { ...prev, ...patch } : prev)
+      }
+    }
+    return { error }
+  }
+
   async function softDeleteSpace(id) {
     await supabase.from('spaces').update({ deleted_at: new Date().toISOString() }).eq('id', id)
     if (activeSpace?.id === id) { setActiveSpaceState(null); setActiveList(null) }
@@ -153,6 +165,12 @@ export function AppProvider({ children }) {
       .single()
     if (!error) await fetchFoldersAndLists(activeSpace.id)
     return { data, error }
+  }
+
+  async function updateFolder(id, patch) {
+    const { error } = await supabase.from('folders').update(patch).eq('id', id)
+    if (!error) await fetchFoldersAndLists(activeSpace.id)
+    return { error }
   }
 
   async function softDeleteFolder(id) {
@@ -189,6 +207,17 @@ export function AppProvider({ children }) {
       await fetchFoldersAndLists(activeSpace.id)
     }
     return { data, error }
+  }
+
+  async function updateList(id, patch) {
+    const { error } = await supabase.from('lists').update(patch).eq('id', id)
+    if (!error) {
+      await fetchFoldersAndLists(activeSpace.id)
+      if (activeList?.id === id) {
+        setActiveListState(prev => prev ? { ...prev, ...patch } : prev)
+      }
+    }
+    return { error }
   }
 
   async function softDeleteList(id) {
@@ -284,9 +313,9 @@ export function AppProvider({ children }) {
       showArchived, setShowArchived,
       expandedFolders, toggleFolder,
       loading,
-      createSpace, softDeleteSpace,
-      createFolder, softDeleteFolder,
-      createList, softDeleteList,
+      createSpace, updateSpace, softDeleteSpace,
+      createFolder, updateFolder, softDeleteFolder,
+      createList, updateList, softDeleteList,
       archiveList, unarchiveList, archiveFolder, unarchiveFolder,
       duplicateList, duplicateFolder,
       undoToast, handleUndo,
