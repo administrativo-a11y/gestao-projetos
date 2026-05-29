@@ -27,6 +27,7 @@ export function AppProvider({ children }) {
   const [expandedFolders, setExpandedFolders] = useState({})
   const [undoToast, setUndoToast] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [showArchived, setShowArchived] = useState(false)
 
   // ── FETCH ──────────────────────────────────────────────────
 
@@ -192,12 +193,53 @@ export function AppProvider({ children }) {
 
   async function softDeleteList(id) {
     await supabase.from('lists').update({ deleted_at: new Date().toISOString() }).eq('id', id)
-    if (activeList?.id === id) setActiveList(null)
+    if (activeList?.id === id) setActiveListState(null)
     await fetchFoldersAndLists(activeSpace.id)
     showUndo('Lista excluída', async () => {
       await supabase.from('lists').update({ deleted_at: null }).eq('id', id)
       await fetchFoldersAndLists(activeSpace.id)
     })
+  }
+
+  async function archiveList(id) {
+    await supabase.from('lists').update({ archived_at: new Date().toISOString() }).eq('id', id)
+    if (activeList?.id === id) setActiveListState(null)
+    await fetchFoldersAndLists(activeSpace.id)
+    showUndo('Lista arquivada', async () => {
+      await supabase.from('lists').update({ archived_at: null }).eq('id', id)
+      await fetchFoldersAndLists(activeSpace.id)
+    })
+  }
+
+  async function unarchiveList(id) {
+    await supabase.from('lists').update({ archived_at: null }).eq('id', id)
+    await fetchFoldersAndLists(activeSpace.id)
+  }
+
+  async function archiveFolder(id) {
+    await supabase.from('folders').update({ archived_at: new Date().toISOString() }).eq('id', id)
+    await fetchFoldersAndLists(activeSpace.id)
+    showUndo('Pasta arquivada', async () => {
+      await supabase.from('folders').update({ archived_at: null }).eq('id', id)
+      await fetchFoldersAndLists(activeSpace.id)
+    })
+  }
+
+  async function unarchiveFolder(id) {
+    await supabase.from('folders').update({ archived_at: null }).eq('id', id)
+    await fetchFoldersAndLists(activeSpace.id)
+  }
+
+  async function duplicateList(id) {
+    const { data, error } = await supabase.rpc('duplicate_list', { p_list_id: id })
+    if (!error) await fetchFoldersAndLists(activeSpace.id)
+    return { newListId: data, error }
+  }
+
+  async function duplicateFolder(id) {
+    const { data, error } = await supabase.rpc('duplicate_folder', { p_folder_id: id })
+    if (!error) await fetchFoldersAndLists(activeSpace.id)
+    return { newFolderId: data, error }
   }
 
   // ── SIDEBAR ────────────────────────────────────────────────
@@ -223,15 +265,30 @@ export function AppProvider({ children }) {
     setUndoToast(null)
   }
 
+  // Listas/pastas visíveis na sidebar — filtradas por archived conforme toggle.
+  // deleted_at já é filtrado na query, então só falta archived_at.
+  const visibleFolders = useMemo(
+    () => folders.filter(f => showArchived ? true : !f.archived_at),
+    [folders, showArchived]
+  )
+  const visibleLists = useMemo(
+    () => lists.filter(l => showArchived ? true : !l.archived_at),
+    [lists, showArchived]
+  )
+
   return (
     <AppContext.Provider value={{
       spaces, activeSpace, setActiveSpace,
       folders, lists, activeList, selectList,
+      visibleFolders, visibleLists,
+      showArchived, setShowArchived,
       expandedFolders, toggleFolder,
       loading,
       createSpace, softDeleteSpace,
       createFolder, softDeleteFolder,
       createList, softDeleteList,
+      archiveList, unarchiveList, archiveFolder, unarchiveFolder,
+      duplicateList, duplicateFolder,
       undoToast, handleUndo,
     }}>
       {children}
