@@ -107,6 +107,7 @@ export default function Sidebar() {
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState({ name: '', color: COLORS[0], useSpaceStatuses: true, folderId: null })
   const [saving, setSaving] = useState(false)
+  const [createError, setCreateError] = useState('')
   const dropdownRef = useRef(null)
   const userMenuRef = useRef(null)
 
@@ -121,16 +122,28 @@ export default function Sidebar() {
 
   function openModal(type, extra = {}) {
     setForm({ name: '', color: COLORS[0], useSpaceStatuses: true, folderId: null, ...extra })
+    setCreateError('')
     setModal(type)
   }
 
   async function handleCreate() {
     if (!form.name.trim()) return
     setSaving(true)
-    if (modal === 'space') await createSpace({ name: form.name, color: form.color })
-    if (modal === 'folder') await createFolder({ name: form.name })
-    if (modal === 'list') await createList({ name: form.name, folderId: form.folderId, useSpaceStatuses: form.useSpaceStatuses })
+    setCreateError('')
+    let result
+    if (modal === 'space') result = await createSpace({ name: form.name, color: form.color })
+    if (modal === 'folder') result = await createFolder({ name: form.name })
+    if (modal === 'list') result = await createList({ name: form.name, folderId: form.folderId, useSpaceStatuses: form.useSpaceStatuses })
     setSaving(false)
+    if (result?.error) {
+      const msg = result.error.message || String(result.error)
+      // Mensagem mais amigável pra RLS
+      const friendly = msg.includes('row-level security') || msg.includes('permission denied')
+        ? 'Você não tem permissão para criar isso neste espaço. Peça ao owner/admin para promover seu papel a "member" ou superior.'
+        : msg
+      setCreateError(friendly)
+      return
+    }
     setModal(null)
   }
 
@@ -536,6 +549,19 @@ export default function Sidebar() {
                     </label>
                   </div>
                 </div>
+              )}
+
+              {createError && (
+                <p style={{
+                  fontSize: 12,
+                  color: 'var(--color-danger)',
+                  background: 'var(--color-danger-light)',
+                  padding: '8px 10px',
+                  borderRadius: 'var(--radius-sm)',
+                  marginTop: 4,
+                }}>
+                  {createError}
+                </p>
               )}
             </div>
 
