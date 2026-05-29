@@ -19,7 +19,8 @@ export function useTasks(listId) {
         *,
         task_assignees(user_id, profiles(id, name, avatar_url)),
         task_tags(tag_id, tags(id, name, color)),
-        subtasks(id, done, title, assignee_id, due_date, description, position)
+        subtasks(id, done, title, assignee_id, due_date, description, position),
+        task_field_values(field_id, value)
       `).eq('list_id', listId).is('deleted_at', null).order('position'),
     ])
     setStatuses(statusRes.data ?? [])
@@ -36,11 +37,12 @@ export function useTasks(listId) {
   const subscriptions = useMemo(() => listId ? [
     { table: 'tasks', filter: `list_id=eq.${listId}` },
     { table: 'list_statuses', filter: `list_id=eq.${listId}` },
-    // subtasks/assignees/tags não têm list_id; subscrevemos sem filtro,
+    // subtasks/assignees/tags/field_values não têm list_id; subscrevemos sem filtro,
     // RLS limita o que chega.
     { table: 'subtasks' },
     { table: 'task_assignees' },
     { table: 'task_tags' },
+    { table: 'task_field_values' },
   ] : [], [listId])
   useRealtimeSync(listId ? `tasks:${listId}` : null, subscriptions, fetchAll)
 
@@ -167,6 +169,34 @@ export function useTasks(listId) {
     return { data: newTask, error: null }
   }
 
+  // Upsert do valor de um campo personalizado pra uma tarefa.
+  // Valor `null`/undefined → remove o registro.
+  async function setFieldValue(taskId, fieldId, value) {
+    if (value === null || value === undefined ||
+        (typeof value === 'string' && value === '') ||
+        (Array.isArray(value) && value.length === 0)) {
+      return clearFieldValue(taskId, fieldId)
+    }
+    const { error } = await supabase
+      .from('task_field_values')
+      .upsert(
+        { task_id: taskId, field_id: fieldId, value },
+        { onConflict: 'task_id,field_id' }
+      )
+    if (!error) await fetchAll()
+    return { error }
+  }
+
+  async function clearFieldValue(taskId, fieldId) {
+    const { error } = await supabase
+      .from('task_field_values')
+      .delete()
+      .eq('task_id', taskId)
+      .eq('field_id', fieldId)
+    if (!error) await fetchAll()
+    return { error }
+  }
+
   async function setAssignees(taskId, newUserIds) {
     const task = tasks.find(t => t.id === taskId)
     const current = (task?.task_assignees ?? []).map(a => a.user_id)
@@ -192,6 +222,7 @@ export function useTasks(listId) {
     statuses, tasks, members, loading,
     createTask, updateTask, moveTask, softDeleteTask, undoDeleteTask,
     setAssignees, toggleDone, duplicateTask,
+    setFieldValue, clearFieldValue,
     refetch: fetchAll
   }
 }
