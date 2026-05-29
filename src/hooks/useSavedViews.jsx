@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { useRealtimeSync } from './useRealtimeSync'
 
 export function useSavedViews(listId) {
   const { user } = useAuth()
@@ -21,6 +22,15 @@ export function useSavedViews(listId) {
   }, [listId, user])
 
   useEffect(() => { refetch() }, [refetch])
+
+  const subs = useMemo(() => (listId && user) ? [
+    { table: 'saved_views', filter: `list_id=eq.${listId}` },
+  ] : [], [listId, user?.id])
+  useRealtimeSync(
+    (listId && user) ? `saved-views:${listId}:${user.id}` : null,
+    subs,
+    refetch
+  )
 
   async function save({ name, config }) {
     if (!user || !listId) return { error: new Error('Faltam dados') }

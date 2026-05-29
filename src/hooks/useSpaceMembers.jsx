@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { useRealtimeSync } from './useRealtimeSync'
 
 export function useSpaceMembers(spaceId) {
   const { user } = useAuth()
@@ -30,6 +31,12 @@ export function useSpaceMembers(spaceId) {
   }, [spaceId])
 
   useEffect(() => { refetch() }, [refetch])
+
+  const subs = useMemo(() => spaceId ? [
+    { table: 'space_members', filter: `space_id=eq.${spaceId}` },
+    { table: 'space_invitations', filter: `space_id=eq.${spaceId}` },
+  ] : [], [spaceId])
+  useRealtimeSync(spaceId ? `members:${spaceId}` : null, subs, refetch)
 
   async function updateRole(memberId, newRole) {
     const { error } = await supabase

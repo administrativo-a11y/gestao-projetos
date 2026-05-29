@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useTasks } from '../../hooks/useTasks'
 import { useAuth } from '../../hooks/useAuth'
 import { useApp } from '../../hooks/useApp'
+import { useRealtimeSync } from '../../hooks/useRealtimeSync'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import AssigneePicker from '../task/AssigneePicker'
@@ -35,6 +36,16 @@ export default function TaskDetailModal({ task, statuses, listId, onClose }) {
 
   useEffect(() => { fetchComments() }, [task.id])
   useEffect(() => { refetchSubtasks() }, [task.id])
+
+  // Realtime: comments e subtasks da tarefa aberta
+  const subs = useMemo(() => [
+    { table: 'comments', filter: `task_id=eq.${task.id}` },
+    { table: 'subtasks', filter: `task_id=eq.${task.id}` },
+  ], [task.id])
+  useRealtimeSync(`task-detail:${task.id}`, subs, () => {
+    fetchComments()
+    refetchSubtasks()
+  })
 
   async function fetchComments() {
     const { data } = await supabase
