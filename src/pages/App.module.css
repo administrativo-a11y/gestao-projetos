@@ -1,8 +1,144 @@
 .layout {
   display: flex;
+  flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  background: var(--color-bg);
 }
+
+/* ── Global topbar (busca + colapsar sidebar) ───────────────── */
+
+.globalTopbar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+  border-bottom: 0.5px solid var(--color-border);
+  background: var(--color-surface);
+  flex-shrink: 0;
+}
+
+.globalSpacer { flex: 1; min-width: 8px; }
+
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  color: var(--color-text-tertiary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: color 0.12s, background 0.12s;
+}
+.iconBtn:hover { color: var(--color-text-primary); background: var(--color-surface-2); }
+
+.searchTrigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 520px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  border: 0.5px solid var(--color-border-strong);
+  background: var(--color-surface-2);
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+.searchTrigger:hover {
+  border-color: var(--color-text-tertiary);
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+}
+.searchTrigger span { flex: 1; text-align: left; }
+
+.kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  letter-spacing: 0.05em;
+}
+
+/* ── Body (sidebar + main) ──────────────────────────────────── */
+
+.body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.sidebarWrap {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  height: 100%;
+  position: relative;
+  transition: width 0.18s;
+  overflow: visible;
+}
+
+.sidebarInner {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Quando colapsada: ocupa 0px de largura no flex,
+   mas a sidebar fica "escondida" à esquerda e aparece no hover. */
+.collapsed { width: 0 !important; }
+.collapsed .sidebarInner {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  transform: translateX(calc(-100% + 6px));
+  transition: transform 0.18s;
+  z-index: 60;
+  box-shadow: none;
+}
+.collapsed .sidebarInner::before {
+  /* faixa fininha visível quando colapsada (peek hint) */
+  content: '';
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--color-border-strong);
+  opacity: 0.5;
+}
+.collapsed:hover .sidebarInner {
+  transform: translateX(0);
+  box-shadow: var(--shadow-lg);
+}
+.collapsed:hover .sidebarInner::before { opacity: 0; }
+
+/* Handle de resize */
+.resizeHandle {
+  width: 4px;
+  margin-left: -2px;
+  cursor: col-resize;
+  background: transparent;
+  flex-shrink: 0;
+  transition: background 0.12s;
+  position: relative;
+  z-index: 5;
+}
+.resizeHandle:hover,
+.resizeHandle:active { background: var(--color-accent); }
+
+/* ── Main ───────────────────────────────────────────────────── */
 
 .main {
   flex: 1;
@@ -10,6 +146,7 @@
   flex-direction: column;
   overflow: hidden;
   background: var(--color-surface);
+  min-width: 0;
 }
 
 .content {

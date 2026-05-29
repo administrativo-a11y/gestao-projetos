@@ -3,6 +3,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useApp } from '../../hooks/useApp'
 import { useTheme } from '../../hooks/useTheme'
 import ProfileModal from './ProfileModal'
+import ContextMenu from './ContextMenu'
 import SpaceSettingsModal from '../space/SpaceSettingsModal'
 import FolderPermissionsPanel from '../folder/FolderPermissionsPanel'
 import styles from './Sidebar.module.css'
@@ -42,8 +43,42 @@ const ListIcon = () => (
 )
 
 const Lock = () => (
-  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
     <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+  </svg>
+)
+
+const Dots = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>
+  </svg>
+)
+
+const Copy = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+  </svg>
+)
+
+const Archive = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+    <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>
+  </svg>
+)
+
+const Unarchive = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+    <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><polyline points="10 15 12 13 14 15"/><line x1="12" y1="13" x2="12" y2="20"/>
+  </svg>
+)
+
+const Eye = ({ on = true }) => on ? (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+  </svg>
+) : (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.77 19.77 0 0 1 5.06-5.94"/><path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a19.77 19.77 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>
   </svg>
 )
 
@@ -52,11 +87,14 @@ export default function Sidebar() {
   const { preference: themePref, setTheme } = useTheme()
   const {
     spaces, activeSpace, setActiveSpace,
-    folders, lists, activeList, selectList,
+    visibleFolders, visibleLists, activeList, selectList,
+    showArchived, setShowArchived,
     expandedFolders, toggleFolder,
     createSpace, softDeleteSpace,
     createFolder, softDeleteFolder,
     createList, softDeleteList,
+    archiveList, unarchiveList, archiveFolder, unarchiveFolder,
+    duplicateList, duplicateFolder,
   } = useApp()
 
   const [spaceDropdown, setSpaceDropdown] = useState(false)
@@ -99,7 +137,7 @@ export default function Sidebar() {
   }
 
   // Listas sem pasta (direto no espaço)
-  const rootLists = lists.filter(l => !l.folder_id)
+  const rootLists = visibleLists.filter(l => !l.folder_id)
 
   return (
     <>
@@ -107,22 +145,58 @@ export default function Sidebar() {
 
         {/* Dropdown de espaço — canto superior esquerdo */}
         <div className={styles.spaceBar} ref={dropdownRef}>
-          <button className={styles.spaceSelector} onClick={() => setSpaceDropdown(v => !v)}>
-            {activeSpace ? (
-              <>
-                <span className={styles.spaceIcon} style={{ background: activeSpace.color }}>
-                  {activeSpace.name[0].toUpperCase()}
-                </span>
-                <span className={styles.spaceName}>{activeSpace.name}</span>
-              </>
-            ) : (
-              <>
-                <span className={styles.spaceIconEmpty}>?</span>
-                <span className={styles.spaceNameEmpty}>Selecionar espaço</span>
-              </>
+          <div className={styles.spaceRow}>
+            <button className={styles.spaceSelector} onClick={() => setSpaceDropdown(v => !v)}>
+              {activeSpace ? (
+                <>
+                  <span className={styles.spaceIcon} style={{ background: activeSpace.color }}>
+                    {activeSpace.name[0].toUpperCase()}
+                  </span>
+                  <span className={styles.spaceName}>{activeSpace.name}</span>
+                </>
+              ) : (
+                <>
+                  <span className={styles.spaceIconEmpty}>?</span>
+                  <span className={styles.spaceNameEmpty}>Selecionar espaço</span>
+                </>
+              )}
+              <Chevron open={spaceDropdown} />
+            </button>
+
+            {activeSpace && (
+              <div className={styles.spaceActions}>
+                <ContextMenu
+                  trigger={
+                    <button className={styles.iconBtn} aria-label="Ações do espaço" title="Mais">
+                      <Dots />
+                    </button>
+                  }
+                  items={[
+                    { label: 'Configurações do espaço', onClick: () => setShowSpaceSettings(true) },
+                    { separator: true },
+                    {
+                      label: showArchived ? 'Ocultar arquivados' : 'Mostrar arquivados',
+                      icon: <Eye on={!showArchived} />,
+                      onClick: () => setShowArchived(v => !v),
+                    },
+                    { separator: true },
+                    { label: 'Excluir espaço', icon: <Trash />, danger: true, onClick: () => softDeleteSpace(activeSpace.id) },
+                  ]}
+                />
+                <ContextMenu
+                  trigger={
+                    <button className={styles.iconBtn} aria-label="Criar" title="Criar">
+                      <Plus />
+                    </button>
+                  }
+                  items={[
+                    { label: 'Lista', icon: <ListIcon />, onClick: () => openModal('list', { folderId: null }) },
+                    { label: 'Pasta', icon: <FolderIcon />, onClick: () => openModal('folder') },
+                  ]}
+                />
+              </div>
             )}
-            <Chevron open={spaceDropdown} />
-          </button>
+          </div>
 
           {spaceDropdown && (
             <div className={styles.spaceDropdown}>
@@ -138,9 +212,6 @@ export default function Sidebar() {
                     </span>
                     {sp.name}
                   </button>
-                  <button className={styles.deleteBtn} onClick={() => softDeleteSpace(sp.id)} aria-label="Excluir espaço">
-                    <Trash />
-                  </button>
                 </div>
               ))}
               <button className={styles.dropdownNew} onClick={() => { setSpaceDropdown(false); openModal('space') }}>
@@ -153,57 +224,85 @@ export default function Sidebar() {
         {/* Conteúdo do espaço ativo */}
         {activeSpace ? (
           <>
-            <div className={styles.treeActions}>
-              <button className={styles.actionBtn} onClick={() => openModal('folder')}>
-                <FolderIcon /> Nova pasta
-              </button>
-              <button className={styles.actionBtn} onClick={() => openModal('list', { folderId: null })}>
-                <ListIcon /> Nova lista
-              </button>
-            </div>
-
             <nav className={styles.tree}>
               {/* Pastas */}
-              {folders.map(folder => {
-                const folderLists = lists.filter(l => l.folder_id === folder.id)
+              {visibleFolders.map(folder => {
+                const folderLists = visibleLists.filter(l => l.folder_id === folder.id)
                 const isOpen = expandedFolders[folder.id]
+                const isArchived = !!folder.archived_at
                 return (
-                  <div key={folder.id}>
+                  <div key={folder.id} className={isArchived ? styles.archivedItem : ''}>
                     <div className={styles.treeRow}>
                       <button className={styles.treeToggle} onClick={() => toggleFolder(folder.id)}>
                         <Chevron open={isOpen} />
-                        <FolderIcon />
+                        {isArchived ? <Archive /> : <FolderIcon />}
                         <span className={styles.treeName}>{folder.name}</span>
                       </button>
                       <div className={styles.rowActions}>
-                        <button className={styles.iconBtn} onClick={() => setPermissionsFolder(folder)} aria-label="Permissões da pasta" title="Permissões">
-                          <Lock />
-                        </button>
-                        <button className={styles.iconBtn} onClick={() => openModal('list', { folderId: folder.id })} aria-label="Nova lista na pasta">
+                        <ContextMenu
+                          trigger={
+                            <button className={styles.iconBtn} aria-label="Ações da pasta" title="Mais">
+                              <Dots />
+                            </button>
+                          }
+                          items={[
+                            { label: 'Duplicar', icon: <Copy />, onClick: async () => {
+                              const { error } = await duplicateFolder(folder.id)
+                              if (error) alert(error.message)
+                            } },
+                            { label: 'Permissões', icon: <Lock />, onClick: () => setPermissionsFolder(folder) },
+                            { separator: true },
+                            isArchived
+                              ? { label: 'Desarquivar', icon: <Unarchive />, onClick: () => unarchiveFolder(folder.id) }
+                              : { label: 'Arquivar', icon: <Archive />, onClick: () => archiveFolder(folder.id) },
+                            { label: 'Excluir', icon: <Trash />, danger: true, onClick: () => softDeleteFolder(folder.id) },
+                          ]}
+                        />
+                        <button
+                          className={styles.iconBtn}
+                          onClick={() => openModal('list', { folderId: folder.id })}
+                          aria-label="Nova lista na pasta"
+                          title="Nova lista"
+                        >
                           <Plus />
-                        </button>
-                        <button className={styles.deleteBtn} onClick={() => softDeleteFolder(folder.id)} aria-label="Excluir pasta">
-                          <Trash />
                         </button>
                       </div>
                     </div>
 
                     {isOpen && (
                       <div className={styles.nested}>
-                        {folderLists.map(list => (
-                          <div key={list.id} className={styles.listRow}>
-                            <button
-                              className={`${styles.listBtn} ${activeList?.id === list.id ? styles.listActive : ''}`}
-                              onClick={() => selectList(list)}
-                            >
-                              <ListIcon />
-                              <span className={styles.treeName}>{list.name}</span>
-                            </button>
-                            <button className={styles.deleteBtn} onClick={() => softDeleteList(list.id)} aria-label="Excluir lista">
-                              <Trash />
-                            </button>
-                          </div>
-                        ))}
+                        {folderLists.map(list => {
+                          const listArchived = !!list.archived_at
+                          return (
+                            <div key={list.id} className={`${styles.listRow} ${listArchived ? styles.archivedItem : ''}`}>
+                              <button
+                                className={`${styles.listBtn} ${activeList?.id === list.id ? styles.listActive : ''}`}
+                                onClick={() => selectList(list)}
+                              >
+                                {listArchived ? <Archive /> : <ListIcon />}
+                                <span className={styles.treeName}>{list.name}</span>
+                              </button>
+                              <ContextMenu
+                                trigger={
+                                  <button className={styles.iconBtn} aria-label="Ações da lista" title="Mais">
+                                    <Dots />
+                                  </button>
+                                }
+                                items={[
+                                  { label: 'Duplicar', icon: <Copy />, onClick: async () => {
+                                    const { error } = await duplicateList(list.id)
+                                    if (error) alert(error.message)
+                                  } },
+                                  { separator: true },
+                                  listArchived
+                                    ? { label: 'Desarquivar', icon: <Unarchive />, onClick: () => unarchiveList(list.id) }
+                                    : { label: 'Arquivar', icon: <Archive />, onClick: () => archiveList(list.id) },
+                                  { label: 'Excluir', icon: <Trash />, danger: true, onClick: () => softDeleteList(list.id) },
+                                ]}
+                              />
+                            </div>
+                          )
+                        })}
                         {folderLists.length === 0 && (
                           <p className={styles.hint}>Nenhuma lista</p>
                         )}
@@ -214,23 +313,43 @@ export default function Sidebar() {
               })}
 
               {/* Listas diretas (sem pasta) */}
-              {rootLists.map(list => (
-                <div key={list.id} className={styles.listRow}>
-                  <button
-                    className={`${styles.listBtn} ${activeList?.id === list.id ? styles.listActive : ''}`}
-                    onClick={() => selectList(list)}
-                  >
-                    <ListIcon />
-                    <span className={styles.treeName}>{list.name}</span>
-                  </button>
-                  <button className={styles.deleteBtn} onClick={() => softDeleteList(list.id)} aria-label="Excluir lista">
-                    <Trash />
-                  </button>
-                </div>
-              ))}
+              {rootLists.map(list => {
+                const listArchived = !!list.archived_at
+                return (
+                  <div key={list.id} className={`${styles.listRow} ${listArchived ? styles.archivedItem : ''}`}>
+                    <button
+                      className={`${styles.listBtn} ${activeList?.id === list.id ? styles.listActive : ''}`}
+                      onClick={() => selectList(list)}
+                    >
+                      {listArchived ? <Archive /> : <ListIcon />}
+                      <span className={styles.treeName}>{list.name}</span>
+                    </button>
+                    <ContextMenu
+                      trigger={
+                        <button className={styles.iconBtn} aria-label="Ações da lista" title="Mais">
+                          <Dots />
+                        </button>
+                      }
+                      items={[
+                        { label: 'Duplicar', icon: <Copy />, onClick: async () => {
+                          const { error } = await duplicateList(list.id)
+                          if (error) alert(error.message)
+                        } },
+                        { separator: true },
+                        listArchived
+                          ? { label: 'Desarquivar', icon: <Unarchive />, onClick: () => unarchiveList(list.id) }
+                          : { label: 'Arquivar', icon: <Archive />, onClick: () => archiveList(list.id) },
+                        { label: 'Excluir', icon: <Trash />, danger: true, onClick: () => softDeleteList(list.id) },
+                      ]}
+                    />
+                  </div>
+                )
+              })}
 
-              {folders.length === 0 && rootLists.length === 0 && (
-                <p className={styles.hint}>Nenhuma pasta ou lista ainda</p>
+              {visibleFolders.length === 0 && rootLists.length === 0 && (
+                <p className={styles.hint}>
+                  {showArchived ? 'Nada arquivado e nenhuma pasta/lista ativa.' : 'Nenhuma pasta ou lista ainda'}
+                </p>
               )}
             </nav>
           </>

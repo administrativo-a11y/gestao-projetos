@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useSpaceMembers } from '../../hooks/useSpaceMembers'
+import StatusesTab from './StatusesTab'
 import modalStyles from '../shared/Modal.module.css'
 import styles from './SpaceSettingsModal.module.css'
 
@@ -42,7 +43,7 @@ export default function SpaceSettingsModal({ space, onClose }) {
         <div className={styles.tabs}>
           {[
             { id: 'members', label: 'Membros' },
-            { id: 'statuses', label: 'Status', disabled: true },
+            { id: 'statuses', label: 'Status' },
             { id: 'tags', label: 'Tags', disabled: true },
           ].map(t => (
             <button
@@ -59,6 +60,7 @@ export default function SpaceSettingsModal({ space, onClose }) {
 
         <div className={styles.body}>
           {tab === 'members' && <MembersTab spaceId={space.id} />}
+          {tab === 'statuses' && <StatusesTab spaceId={space.id} />}
         </div>
       </div>
     </div>
