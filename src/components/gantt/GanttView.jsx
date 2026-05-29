@@ -4,7 +4,9 @@ import { useApp } from '../../hooks/useApp'
 import { useAuth } from '../../hooks/useAuth'
 import { useTaskFilters, applyFilters } from '../../hooks/useTaskFilters'
 import { useListDependencies } from '../../hooks/useTaskDependencies'
+import { useTaskFromQuery, taskShareUrl } from '../../hooks/useTaskFromQuery'
 import TaskDetailModal from '../board/TaskDetailModal'
+import TaskQuickActions from '../task/TaskQuickActions'
 import { addDays, addMonths, differenceInDays, eachDayOfInterval, format, isWeekend, startOfWeek, startOfMonth, startOfDay, max as dateMax, min as dateMin } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import styles from './GanttView.module.css'
@@ -22,7 +24,7 @@ const SIDE_WIDTH = 220
 export default function GanttView() {
   const { activeList } = useApp()
   const { user } = useAuth()
-  const { tasks: allTasks, statuses, loading } = useTasks(activeList?.id)
+  const { tasks: allTasks, statuses, loading, toggleDone, duplicateTask, softDeleteTask } = useTasks(activeList?.id)
   const { filters } = useTaskFilters()
   const tasks = useMemo(
     () => applyFilters(allTasks, statuses, filters, user?.id),
@@ -31,6 +33,20 @@ export default function GanttView() {
   const { deps } = useListDependencies(activeList?.id)
   const [zoom, setZoom] = useState('week')
   const [selectedTask, setSelectedTask] = useState(null)
+
+  const doneStatusId = useMemo(
+    () => statuses.find(s => /^conclu/i.test(s.name))?.id,
+    [statuses]
+  )
+
+  const { clearTaskParam } = useTaskFromQuery(allTasks, setSelectedTask, () => setSelectedTask(null))
+
+  async function copyTaskLink(task) {
+    const url = taskShareUrl(task, activeList)
+    try { await navigator.clipboard.writeText(url) }
+    catch { window.prompt('Link da tarefa:', url) }
+  }
+  function closeTask() { setSelectedTask(null); clearTaskParam() }
 
   // Determina intervalo: do menor start/due ao maior, com padding
   const interval = useMemo(() => {
@@ -171,21 +187,55 @@ export default function GanttView() {
             <div className={styles.sideBody}>
               {dated.map(t => {
                 const st = getStatus(t)
+                const isDone = doneStatusId && t.status_id === doneStatusId
                 return (
-                  <div key={t.id} className={styles.sideRow} style={{ height: ROW_HEIGHT }} onClick={() => setSelectedTask(t)}>
+                  <div
+                    key={t.id}
+                    className={`${styles.sideRow} ${isDone ? styles.sideRowDone : ''}`}
+                    style={{ height: ROW_HEIGHT }}
+                    onClick={() => setSelectedTask(t)}
+                  >
                     {st && <span className={styles.statusDot} style={{ background: st.color }} />}
                     <span className={styles.sideTitle}>{t.title}</span>
+                    <div className={styles.sideActions}>
+                      <TaskQuickActions
+                        task={t}
+                        isDone={isDone}
+                        onToggleDone={x => toggleDone(x.id)}
+                        onDuplicate={x => duplicateTask(x.id)}
+                        onCopyLink={copyTaskLink}
+                        onDelete={x => softDeleteTask(x.id)}
+                      />
+                    </div>
                   </div>
                 )
               })}
               {undated.length > 0 && (
                 <>
                   <div className={styles.sideSection}>Sem data</div>
-                  {undated.map(t => (
-                    <div key={t.id} className={styles.sideRow} style={{ height: ROW_HEIGHT }} onClick={() => setSelectedTask(t)}>
-                      <span className={styles.sideTitle}>{t.title}</span>
-                    </div>
-                  ))}
+                  {undated.map(t => {
+                    const isDone = doneStatusId && t.status_id === doneStatusId
+                    return (
+                      <div
+                        key={t.id}
+                        className={`${styles.sideRow} ${isDone ? styles.sideRowDone : ''}`}
+                        style={{ height: ROW_HEIGHT }}
+                        onClick={() => setSelectedTask(t)}
+                      >
+                        <span className={styles.sideTitle}>{t.title}</span>
+                        <div className={styles.sideActions}>
+                          <TaskQuickActions
+                            task={t}
+                            isDone={isDone}
+                            onToggleDone={x => toggleDone(x.id)}
+                            onDuplicate={x => duplicateTask(x.id)}
+                            onCopyLink={copyTaskLink}
+                            onDelete={x => softDeleteTask(x.id)}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
                 </>
               )}
             </div>
@@ -276,7 +326,7 @@ export default function GanttView() {
           task={selectedTask}
           statuses={statuses}
           listId={activeList.id}
-          onClose={() => setSelectedTask(null)}
+          onClose={closeTask}
         />
       )}
     </>

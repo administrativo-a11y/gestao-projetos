@@ -46,7 +46,7 @@
   font-size: 13px;
 }
 
-.thTitle, .th {
+.thTitle, .th, .thActions {
   padding: 7px 12px;
   text-align: left;
   font-size: 11px;
@@ -57,6 +57,7 @@
 }
 
 .thTitle { width: 100%; }
+.thActions { width: 100px; padding-right: 8px; }
 
 .row {
   cursor: pointer;
@@ -67,15 +68,34 @@
 .row:hover { background: var(--color-surface-2); }
 .row:focus { outline: none; background: var(--color-surface-2); }
 
-.tdTitle, .td {
+.tdTitle, .td, .tdActions {
   padding: 9px 12px;
   vertical-align: middle;
 }
+
+.tdActions {
+  text-align: right;
+  white-space: nowrap;
+  padding-right: 8px;
+}
+
+.actionsWrap {
+  display: inline-flex;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.row:hover .actionsWrap,
+.row:focus-within .actionsWrap { opacity: 1; }
 
 .tdTitle {
   color: var(--color-text-primary);
   font-size: 13px;
   max-width: 360px;
+}
+
+.rowDone .tdTitle {
+  color: var(--color-text-tertiary);
+  text-decoration: line-through;
 }
 
 .td {

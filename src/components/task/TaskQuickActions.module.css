@@ -1,0 +1,40 @@
+.bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.overlay {
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 1px;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+.btn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-2);
+}
+
+.btnDone {
+  color: var(--color-accent);
+}
+.btnDone:hover {
+  color: var(--color-accent-hover);
+  background: var(--color-accent-light);
+}
