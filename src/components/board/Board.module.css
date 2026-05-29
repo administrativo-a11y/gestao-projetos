@@ -81,11 +81,67 @@
   transform: rotate(1deg);
 }
 
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
 .cardTitle {
   font-size: 13px;
   color: var(--color-text-primary);
   line-height: 1.45;
-  margin-bottom: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.cardDone .cardTitle {
+  color: var(--color-text-tertiary);
+  text-decoration: line-through;
+}
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.12s;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 1px;
+  box-shadow: var(--shadow-sm);
+  margin-top: -2px;
+}
+.card:hover .cardActions,
+.card:focus-within .cardActions { opacity: 1; }
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+.actionBtn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-2);
+}
+.actionBtnDone {
+  color: var(--color-accent);
+}
+.actionBtnDone:hover {
+  color: var(--color-accent-hover);
+  background: var(--color-accent-light);
 }
 
 .cardMeta {
