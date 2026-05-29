@@ -88,6 +88,85 @@ export function useTasks(listId) {
     await fetchAll()
   }
 
+  // Alterna o status entre "Concluído" e o anterior. Procura por status cujo nome
+  // começa com "conclu" (Concluído/Concluida). Se não houver, usa o último status.
+  async function toggleDone(taskId) {
+    const task = tasks.find(t => t.id === taskId)
+    if (!task) return { error: new Error('Tarefa não encontrada') }
+    const doneStatus =
+      statuses.find(s => /^conclu/i.test(s.name)) ??
+      statuses[statuses.length - 1]
+    if (!doneStatus) return { error: new Error('Sem status disponível') }
+
+    const isDone = task.status_id === doneStatus.id
+    let newStatusId
+    if (isDone) {
+      // Volta pro primeiro status que NÃO é done
+      const other = statuses.find(s => s.id !== doneStatus.id) ?? statuses[0]
+      newStatusId = other.id
+    } else {
+      newStatusId = doneStatus.id
+    }
+    return updateTask(taskId, { status_id: newStatusId })
+  }
+
+  // Duplica a tarefa na mesma lista, copiando título/desc/prazos/prioridade
+  // mais responsáveis, tags e subtarefas. Não copia anexos, comentários
+  // nem dependências.
+  async function duplicateTask(taskId) {
+    const t = tasks.find(x => x.id === taskId)
+    if (!t) return { error: new Error('Tarefa não encontrada') }
+
+    const samePos = tasks.filter(x => x.status_id === t.status_id).length
+    const { data: newTask, error } = await supabase
+      .from('tasks')
+      .insert({
+        list_id: t.list_id,
+        status_id: t.status_id,
+        title: `Cópia de ${t.title}`,
+        description: t.description,
+        priority: t.priority,
+        due_date: t.due_date,
+        start_date: t.start_date,
+        position: samePos,
+        created_by: user?.id,
+      })
+      .select()
+      .single()
+    if (error || !newTask) return { error }
+
+    // Subtarefas
+    const subs = (t.subtasks ?? []).map(s => ({
+      task_id: newTask.id,
+      title: s.title,
+      done: false,
+      position: s.position,
+      assignee_id: s.assignee_id ?? null,
+      due_date: s.due_date ?? null,
+      description: s.description ?? null,
+    }))
+    if (subs.length > 0) await supabase.from('subtasks').insert(subs)
+
+    // Responsáveis
+    const assignees = (t.task_assignees ?? []).map(a => ({
+      task_id: newTask.id,
+      user_id: a.user_id,
+    }))
+    if (assignees.length > 0) {
+      await supabase.from('task_assignees').insert(assignees)
+    }
+
+    // Tags
+    const tags = (t.task_tags ?? []).map(tt => ({
+      task_id: newTask.id,
+      tag_id: tt.tag_id,
+    }))
+    if (tags.length > 0) await supabase.from('task_tags').insert(tags)
+
+    await fetchAll()
+    return { data: newTask, error: null }
+  }
+
   async function setAssignees(taskId, newUserIds) {
     const task = tasks.find(t => t.id === taskId)
     const current = (task?.task_assignees ?? []).map(a => a.user_id)
@@ -112,7 +191,7 @@ export function useTasks(listId) {
   return {
     statuses, tasks, members, loading,
     createTask, updateTask, moveTask, softDeleteTask, undoDeleteTask,
-    setAssignees,
+    setAssignees, toggleDone, duplicateTask,
     refetch: fetchAll
   }
 }
