@@ -3,10 +3,12 @@ import { useTasks } from '../../hooks/useTasks'
 import { useApp } from '../../hooks/useApp'
 import { useAuth } from '../../hooks/useAuth'
 import { useTaskFilters, applyFilters } from '../../hooks/useTaskFilters'
+import { useTaskFromQuery, taskShareUrl } from '../../hooks/useTaskFromQuery'
 import { format, isPast, isToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import TaskDetailModal from '../board/TaskDetailModal'
 import NewTaskModal from '../board/NewTaskModal'
+import TaskQuickActions from '../task/TaskQuickActions'
 import styles from './ListView.module.css'
 
 const PRIORITY_LABEL = { high: 'Alta', medium: 'Média', low: 'Baixa' }
@@ -15,7 +17,7 @@ const PRIORITY_CLASS = { high: 'priorityHigh', medium: 'priorityMed', low: 'prio
 export default function ListView() {
   const { activeList } = useApp()
   const { user } = useAuth()
-  const { statuses, tasks, loading } = useTasks(activeList?.id)
+  const { statuses, tasks, loading, toggleDone, duplicateTask, softDeleteTask } = useTasks(activeList?.id)
   const { filters } = useTaskFilters()
   const filteredTasks = useMemo(
     () => applyFilters(tasks, statuses, filters, user?.id),
@@ -25,6 +27,19 @@ export default function ListView() {
   const [showNewTask, setShowNewTask] = useState(false)
   const [sortBy, setSortBy] = useState('position')
   const [groupBy, setGroupBy] = useState('none')
+
+  const { clearTaskParam } = useTaskFromQuery(tasks, setSelectedTask, () => setSelectedTask(null))
+
+  async function copyTaskLink(task) {
+    const url = taskShareUrl(task, activeList)
+    try { await navigator.clipboard.writeText(url) }
+    catch { window.prompt('Link da tarefa:', url) }
+  }
+
+  function closeTask() {
+    setSelectedTask(null)
+    clearTaskParam()
+  }
 
   const sorted = [...filteredTasks].sort((a, b) => {
     if (sortBy === 'priority') {
@@ -92,15 +107,17 @@ export default function ListView() {
                   <th className={styles.th}>Responsável</th>
                   <th className={styles.th}>Prazo</th>
                   <th className={styles.th}>Prioridade</th>
+                  <th className={styles.thActions} aria-label="Ações" />
                 </tr>
               </thead>
               <tbody>
                 {group.items.map(task => {
                   const status = getStatus(task.status_id)
+                  const isDone = doneStatusId && task.status_id === doneStatusId
                   return (
                     <tr
                       key={task.id}
-                      className={styles.row}
+                      className={`${styles.row} ${isDone ? styles.rowDone : ''}`}
                       onClick={() => setSelectedTask(task)}
                       tabIndex={0}
                       onKeyDown={e => e.key === 'Enter' && setSelectedTask(task)}
@@ -146,6 +163,18 @@ export default function ListView() {
                           {PRIORITY_LABEL[task.priority]}
                         </span>
                       </td>
+                      <td className={styles.tdActions}>
+                        <div className={styles.actionsWrap}>
+                          <TaskQuickActions
+                            task={task}
+                            isDone={isDone}
+                            onToggleDone={t => toggleDone(t.id)}
+                            onDuplicate={t => duplicateTask(t.id)}
+                            onCopyLink={copyTaskLink}
+                            onDelete={t => softDeleteTask(t.id)}
+                          />
+                        </div>
+                      </td>
                     </tr>
                   )
                 })}
@@ -167,7 +196,7 @@ export default function ListView() {
           task={selectedTask}
           statuses={statuses}
           listId={activeList.id}
-          onClose={() => setSelectedTask(null)}
+          onClose={closeTask}
         />
       )}
 

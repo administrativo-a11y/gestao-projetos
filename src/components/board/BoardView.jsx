@@ -4,50 +4,13 @@ import { useTasks } from '../../hooks/useTasks'
 import { useApp } from '../../hooks/useApp'
 import { useAuth } from '../../hooks/useAuth'
 import { useTaskFilters, applyFilters } from '../../hooks/useTaskFilters'
+import { useTaskFromQuery, taskShareUrl } from '../../hooks/useTaskFromQuery'
 import { format, isPast, isToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import NewTaskModal from './NewTaskModal'
 import TaskDetailModal from './TaskDetailModal'
-import ContextMenu from '../shared/ContextMenu'
+import TaskQuickActions from '../task/TaskQuickActions'
 import styles from './Board.module.css'
-
-const CheckIcon = ({ filled }) => (
-  filled ? (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <circle cx="12" cy="12" r="10"/>
-      <polyline points="9 12 11 14 15 10" stroke="var(--color-surface)" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  ) : (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="9.5"/>
-      <polyline points="9 12 11 14 15 10"/>
-    </svg>
-  )
-)
-
-const CopyIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-  </svg>
-)
-
-const DotsIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-    <circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>
-  </svg>
-)
-
-const TrashIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-  </svg>
-)
-
-const LinkIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-  </svg>
-)
 
 export default function BoardView() {
   const { activeList } = useApp()
@@ -61,6 +24,8 @@ export default function BoardView() {
   const [newTaskStatus, setNewTaskStatus] = useState(null)
   const [selectedTask, setSelectedTask] = useState(null)
 
+  const { clearTaskParam } = useTaskFromQuery(tasks, setSelectedTask, () => setSelectedTask(null))
+
   const doneStatusId = useMemo(
     () => statuses.find(s => /^conclu/i.test(s.name))?.id,
     [statuses]
@@ -71,12 +36,17 @@ export default function BoardView() {
   }
 
   async function copyTaskLink(task) {
-    const url = `${window.location.origin}/space/${activeList?.space_id}/list/${activeList?.id}?task=${task.id}`
+    const url = taskShareUrl(task, activeList)
     try {
       await navigator.clipboard.writeText(url)
     } catch {
       window.prompt('Link da tarefa:', url)
     }
+  }
+
+  function closeTask() {
+    setSelectedTask(null)
+    clearTaskParam()
   }
 
   async function onDragEnd(result) {
@@ -129,39 +99,15 @@ export default function BoardView() {
                             >
                               <div className={styles.cardHeader}>
                                 <p className={styles.cardTitle}>{task.title}</p>
-                                <div className={styles.cardActions} onClick={e => e.stopPropagation()}>
-                                  <button
-                                    className={`${styles.actionBtn} ${isDone ? styles.actionBtnDone : ''}`}
-                                    onClick={() => toggleDone(task.id)}
-                                    title={isDone ? 'Reabrir' : 'Concluir'}
-                                    aria-label={isDone ? 'Reabrir' : 'Concluir'}
-                                  >
-                                    <CheckIcon filled={isDone} />
-                                  </button>
-                                  <button
-                                    className={styles.actionBtn}
-                                    onClick={() => duplicateTask(task.id)}
-                                    title="Duplicar"
-                                    aria-label="Duplicar"
-                                  >
-                                    <CopyIcon />
-                                  </button>
-                                  <ContextMenu
-                                    trigger={
-                                      <button
-                                        className={styles.actionBtn}
-                                        title="Mais"
-                                        aria-label="Mais ações"
-                                      >
-                                        <DotsIcon />
-                                      </button>
-                                    }
-                                    items={[
-                                      { label: 'Copiar link', icon: <LinkIcon />, onClick: () => copyTaskLink(task) },
-                                      { label: 'Duplicar', icon: <CopyIcon />, onClick: () => duplicateTask(task.id) },
-                                      { separator: true },
-                                      { label: 'Excluir', icon: <TrashIcon />, danger: true, onClick: () => softDeleteTask(task.id) },
-                                    ]}
+                                <div className={styles.cardActions}>
+                                  <TaskQuickActions
+                                    task={task}
+                                    isDone={isDone}
+                                    onToggleDone={t => toggleDone(t.id)}
+                                    onDuplicate={t => duplicateTask(t.id)}
+                                    onCopyLink={copyTaskLink}
+                                    onDelete={t => softDeleteTask(t.id)}
+                                    variant="overlay"
                                   />
                                 </div>
                               </div>
@@ -215,7 +161,7 @@ export default function BoardView() {
         <NewTaskModal statusId={newTaskStatus} listId={activeList.id} onClose={() => setNewTaskStatus(null)} />
       )}
       {selectedTask && (
-        <TaskDetailModal task={selectedTask} statuses={statuses} listId={activeList.id} onClose={() => setSelectedTask(null)} />
+        <TaskDetailModal task={selectedTask} statuses={statuses} listId={activeList.id} onClose={closeTask} />
       )}
     </>
   )

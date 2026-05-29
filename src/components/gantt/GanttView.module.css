@@ -88,7 +88,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 12px;
+  padding: 0 8px 0 12px;
   border-bottom: 0.5px solid var(--color-border);
   font-size: 13px;
   color: var(--color-text-primary);
@@ -96,6 +96,19 @@
   transition: background 0.12s;
 }
 .sideRow:hover { background: var(--color-surface-2); }
+
+.sideRowDone .sideTitle {
+  color: var(--color-text-tertiary);
+  text-decoration: line-through;
+}
+
+.sideActions {
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.sideRow:hover .sideActions,
+.sideRow:focus-within .sideActions { opacity: 1; }
 
 .sideSection {
   padding: 8px 12px;
