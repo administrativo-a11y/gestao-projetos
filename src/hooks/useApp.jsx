@@ -5,6 +5,17 @@ import { useRealtimeSync } from './useRealtimeSync'
 
 const AppContext = createContext(null)
 
+// Chaves de localStorage para lembrar onde o usuário estava.
+const LAST_SPACE_KEY = 'gp.last_space_id'
+const LAST_LIST_KEY = (spaceId) => `gp.last_list_id.${spaceId}`
+
+function safeGet(key) {
+  try { return localStorage.getItem(key) } catch { return null }
+}
+function safeSet(key, value) {
+  try { localStorage.setItem(key, value) } catch { /* ignore */ }
+}
+
 export function AppProvider({ children }) {
   const { user } = useAuth()
 
@@ -12,7 +23,7 @@ export function AppProvider({ children }) {
   const [activeSpace, setActiveSpaceState] = useState(null)
   const [folders, setFolders] = useState([])
   const [lists, setLists] = useState([])
-  const [activeList, setActiveList] = useState(null)
+  const [activeList, setActiveListState] = useState(null)
   const [expandedFolders, setExpandedFolders] = useState({})
   const [undoToast, setUndoToast] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -67,9 +78,46 @@ export function AppProvider({ children }) {
 
   async function setActiveSpace(sp) {
     setActiveSpaceState(sp)
-    setActiveList(null)
+    setActiveListState(null)
     setExpandedFolders({})
+    if (sp?.id) safeSet(LAST_SPACE_KEY, sp.id)
   }
+
+  // Wrapper que persiste a última lista por espaço
+  function setActiveList(list) {
+    setActiveListState(list)
+    if (list?.id && activeSpace?.id) {
+      safeSet(LAST_LIST_KEY(activeSpace.id), list.id)
+    }
+  }
+
+  // Restaurar último espaço quando os espaços terminam de carregar
+  // e o usuário está na home (sem espaço na URL).
+  useEffect(() => {
+    if (loading) return
+    if (activeSpace) return
+    if (spaces.length === 0) return
+    const path = window.location.pathname
+    if (path.startsWith('/space/')) return // URL já indica espaço; sync de App.jsx cuida
+    const savedId = safeGet(LAST_SPACE_KEY)
+    if (!savedId) return
+    const sp = spaces.find(s => s.id === savedId)
+    if (sp) setActiveSpaceState(sp)
+  }, [loading, spaces, activeSpace])
+
+  // Restaurar última lista do espaço quando as listas carregam
+  // e a URL não indica uma lista específica.
+  useEffect(() => {
+    if (!activeSpace) return
+    if (activeList) return
+    if (lists.length === 0) return
+    const path = window.location.pathname
+    if (path.includes('/list/')) return // URL já indica lista
+    const savedId = safeGet(LAST_LIST_KEY(activeSpace.id))
+    if (!savedId) return
+    const li = lists.find(l => l.id === savedId)
+    if (li) setActiveListState(li)
+  }, [activeSpace, lists, activeList])
 
   async function createSpace({ name, color }) {
     const { data, error } = await supabase
