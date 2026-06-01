@@ -12,6 +12,8 @@
   --color-bg: #f7f6f3;
   --color-surface: #ffffff;
   --color-surface-2: #f0efe9;
+  --color-sidebar: #e9edf3;
+  --color-sidebar-hover: #dde3ec;
   --color-border: rgba(0,0,0,0.08);
   --color-border-strong: rgba(0,0,0,0.14);
 
@@ -54,6 +56,8 @@
   --color-bg: #1a1a18;
   --color-surface: #232220;
   --color-surface-2: #2c2b28;
+  --color-sidebar: #1f262f;
+  --color-sidebar-hover: #2a3340;
   --color-border: rgba(255,255,255,0.07);
   --color-border-strong: rgba(255,255,255,0.14);
 

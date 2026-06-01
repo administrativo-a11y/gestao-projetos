@@ -4,9 +4,11 @@ import { useApp } from '../../hooks/useApp'
 import { useAuth } from '../../hooks/useAuth'
 import { useCustomFields } from '../../hooks/useCustomFields'
 import { useSpaceMembers } from '../../hooks/useSpaceMembers'
+import { useSpaceTaskTypes } from '../../hooks/useSpaceTaskTypes'
 import { useTaskFilters, applyFilters } from '../../hooks/useTaskFilters'
 import { useTaskFromQuery, taskShareUrl } from '../../hooks/useTaskFromQuery'
 import CustomFieldDisplay from '../task/CustomFieldDisplay'
+import StatusTypePopover from '../task/StatusTypePopover'
 import { format, isPast, isToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import TaskDetailModal from '../board/TaskDetailModal'
@@ -23,6 +25,7 @@ const ORDER_KEY = (listId) => `gp.col_order.${listId}`
 const COLLAPSED_KEY = (listId) => `gp.collapsed_groups.${listId}`
 const HIDDEN_KEY = (listId) => `gp.hidden_cols.${listId}`
 const EXPANDED_DESC_KEY = (listId) => `gp.expanded_desc.${listId}`
+const LIST_DESC_HIDDEN_KEY = (listId) => `gp.list_desc_hidden.${listId}`
 
 const Chevron = ({ open }) => (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"
@@ -77,11 +80,12 @@ function getInitials(n) {
 }
 
 export default function ListView() {
-  const { activeList, activeSpace } = useApp()
+  const { activeList, activeSpace, updateList } = useApp()
   const { user } = useAuth()
-  const { statuses, tasks, loading, toggleDone, duplicateTask, softDeleteTask, addSubtask } = useTasks(activeList?.id)
+  const { statuses, tasks, loading, toggleDone, duplicateTask, softDeleteTask, addSubtask, updateTask } = useTasks(activeList?.id)
   const { fields: customFields } = useCustomFields(activeList?.id)
   const { members } = useSpaceMembers(activeSpace?.id)
+  const { types: taskTypes } = useSpaceTaskTypes(activeSpace?.id)
   const { filters } = useTaskFilters()
   const filteredTasks = useMemo(
     () => applyFilters(tasks, statuses, filters, user?.id),
@@ -161,12 +165,22 @@ export default function ListView() {
     })
   }
 
-  const tasksWithDescription = useMemo(
-    () => filteredTasks.filter(t => (t.description ?? '').trim().length > 0),
-    [filteredTasks]
-  )
-  const allExpanded = tasksWithDescription.length > 0 &&
-    tasksWithDescription.every(t => expandedDesc.has(t.id))
+  // ── Popover Status / Tipo ──────────────────────────────────────────
+  const [statusPopover, setStatusPopover] = useState(null) // { taskId, rect }
+  function openStatusPopover(taskId, e) {
+    if (e) { e.stopPropagation(); e.preventDefault() }
+    const rect = e?.currentTarget?.getBoundingClientRect?.()
+    setStatusPopover({ taskId, rect })
+  }
+  function closeStatusPopover() { setStatusPopover(null) }
+  async function pickStatusForTask(statusId) {
+    if (!statusPopover?.taskId) return
+    await updateTask(statusPopover.taskId, { status_id: statusId })
+  }
+  async function pickTypeForTask(typeId) {
+    if (!statusPopover?.taskId) return
+    await updateTask(statusPopover.taskId, { type_id: typeId })
+  }
 
   // ── Inline subtask creation ────────────────────────────────────────
   const [addingSubtaskFor, setAddingSubtaskFor] = useState(null) // taskId
@@ -197,15 +211,71 @@ export default function ListView() {
     }
   }
 
-  function toggleAllDescriptions() {
-    if (allExpanded) {
-      setExpandedDesc(new Set())
-      try { localStorage.setItem(EXPANDED_DESC_KEY(activeList.id), JSON.stringify([])) } catch { /* ignore */ }
-    } else {
-      const next = new Set(tasksWithDescription.map(t => t.id))
-      setExpandedDesc(next)
-      try { localStorage.setItem(EXPANDED_DESC_KEY(activeList.id), JSON.stringify([...next])) } catch { /* ignore */ }
+  // ── Descrição da Lista (card no topo) ──────────────────────────────
+  const [listDescHidden, setListDescHidden] = useState(false)
+  const [editingListDesc, setEditingListDesc] = useState(false)
+  const [draftListDesc, setDraftListDesc] = useState('')
+  const [savingListDesc, setSavingListDesc] = useState(false)
+
+  useEffect(() => {
+    if (!activeList?.id) return
+    try {
+      const raw = localStorage.getItem(LIST_DESC_HIDDEN_KEY(activeList.id))
+      setListDescHidden(raw === '1')
+    } catch { setListDescHidden(false) }
+    setEditingListDesc(false)
+    setDraftListDesc(activeList?.description ?? '')
+  }, [activeList?.id, activeList?.description])
+
+  // Sincroniza visibilidade com mudanças disparadas pelo topbar
+  useEffect(() => {
+    function onStorage(e) {
+      if (!activeList?.id) return
+      if (e.key !== LIST_DESC_HIDDEN_KEY(activeList.id)) return
+      setListDescHidden(e.newValue === '1')
     }
+    function onEdit(e) {
+      if (!activeList?.id) return
+      if (e.detail?.listId !== activeList.id) return
+      setDraftListDesc(activeList?.description ?? '')
+      setEditingListDesc(true)
+      setListDescHidden(false)
+    }
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('gp:list_desc_edit', onEdit)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('gp:list_desc_edit', onEdit)
+    }
+  }, [activeList?.id, activeList?.description])
+
+  function toggleListDesc() {
+    setListDescHidden(prev => {
+      const next = !prev
+      try { localStorage.setItem(LIST_DESC_HIDDEN_KEY(activeList.id), next ? '1' : '0') } catch { /* ignore */ }
+      return next
+    })
+  }
+
+  function startEditListDesc() {
+    setDraftListDesc(activeList?.description ?? '')
+    setEditingListDesc(true)
+    setListDescHidden(false)
+    try { localStorage.setItem(LIST_DESC_HIDDEN_KEY(activeList.id), '0') } catch { /* ignore */ }
+  }
+
+  function cancelEditListDesc() {
+    setEditingListDesc(false)
+    setDraftListDesc(activeList?.description ?? '')
+  }
+
+  async function saveListDesc() {
+    const next = draftListDesc.trim()
+    setSavingListDesc(true)
+    const value = next.length === 0 ? null : next
+    await updateList(activeList.id, { description: value })
+    setSavingListDesc(false)
+    setEditingListDesc(false)
   }
 
   function toggleColumnVisibility(key) {
@@ -461,25 +531,6 @@ export default function ListView() {
               <option value="priority">Prioridade</option>
               <option value="due_date">Prazo</option>
             </select>
-            {tasksWithDescription.length > 0 && (
-              <button
-                type="button"
-                className={styles.gearBtn}
-                onClick={toggleAllDescriptions}
-                title={allExpanded ? 'Ocultar descrições' : 'Mostrar descrições'}
-                aria-label={allExpanded ? 'Ocultar descrições' : 'Mostrar descrições'}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                  <line x1="8" y1="6" x2="21" y2="6"/>
-                  <line x1="8" y1="12" x2="21" y2="12"/>
-                  <line x1="8" y1="18" x2="21" y2="18"/>
-                  <line x1="3" y1="6" x2="3.01" y2="6"/>
-                  <line x1="3" y1="12" x2="3.01" y2="12"/>
-                  <line x1="3" y1="18" x2="3.01" y2="18"/>
-                </svg>
-                <span>{allExpanded ? 'Ocultar descrição' : 'Mostrar descrição'}</span>
-              </button>
-            )}
             <button
               type="button"
               className={styles.gearBtn}
@@ -496,6 +547,57 @@ export default function ListView() {
             </button>
           </div>
         </div>
+
+        {/* Descrição da Lista — card no topo, antes dos grupos */}
+        {(editingListDesc || (activeList?.description && !listDescHidden)) && (
+          <div className={styles.listDescCard}>
+            {editingListDesc ? (
+              <>
+                <textarea
+                  className={styles.listDescTextarea}
+                  value={draftListDesc}
+                  onChange={e => setDraftListDesc(e.target.value)}
+                  placeholder="Descreva o objetivo desta lista, contexto do projeto, links importantes..."
+                  rows={5}
+                  autoFocus
+                  disabled={savingListDesc}
+                  onKeyDown={e => {
+                    if (e.key === 'Escape') cancelEditListDesc()
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveListDesc()
+                  }}
+                />
+                <div className={styles.listDescActions}>
+                  <span className={styles.listDescHint}>Ctrl+Enter pra salvar · Esc pra cancelar</span>
+                  <div className={styles.listDescButtons}>
+                    <button
+                      type="button"
+                      className={styles.listDescBtnCancel}
+                      onClick={cancelEditListDesc}
+                      disabled={savingListDesc}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.listDescBtnSave}
+                      onClick={saveListDesc}
+                      disabled={savingListDesc}
+                    >
+                      {savingListDesc ? 'Salvando...' : 'Salvar'}
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className={styles.listDescView} onClick={startEditListDesc} role="button" tabIndex={0}
+                onKeyDown={e => { if (e.key === 'Enter') startEditListDesc() }}
+                title="Clique para editar"
+              >
+                <div className={styles.listDescContent}>{activeList.description}</div>
+              </div>
+            )}
+          </div>
+        )}
 
         {groups.map(group => {
           const isCollapsed = group.key && collapsedGroups.has(group.key)
@@ -591,13 +693,23 @@ export default function ListView() {
                                 {(() => {
                                   const s = getStatus(task.status_id)
                                   return s ? (
-                                    <span
-                                      className={styles.titleStatusDot}
+                                    <button
+                                      type="button"
+                                      className={styles.titleStatusBtn}
                                       style={{ background: s.color }}
-                                      title={s.name}
-                                      aria-label={s.name}
+                                      title={`Status: ${s.name} · clique pra alterar`}
+                                      aria-label={`Status: ${s.name}`}
+                                      onClick={e => openStatusPopover(task.id, e)}
                                     />
-                                  ) : null
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className={`${styles.titleStatusBtn} ${styles.titleStatusBtnEmpty}`}
+                                      title="Definir status"
+                                      aria-label="Definir status"
+                                      onClick={e => openStatusPopover(task.id, e)}
+                                    />
+                                  )
                                 })()}
                                 <span className={styles.titleText}>{task.title}</span>
                                 <span className={styles.titleActions} onClick={e => e.stopPropagation()}>
@@ -738,6 +850,22 @@ export default function ListView() {
           onClose={() => setShowPanel(false)}
         />
       )}
+
+      {statusPopover && (() => {
+        const t = tasks.find(x => x.id === statusPopover.taskId)
+        return (
+          <StatusTypePopover
+            anchorRect={statusPopover.rect}
+            statuses={statuses}
+            types={taskTypes}
+            currentStatusId={t?.status_id}
+            currentTypeId={t?.type_id}
+            onPickStatus={pickStatusForTask}
+            onPickType={pickTypeForTask}
+            onClose={closeStatusPopover}
+          />
+        )
+      })()}
     </>
   )
 }

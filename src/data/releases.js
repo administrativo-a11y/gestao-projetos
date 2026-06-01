@@ -3,6 +3,32 @@
 
 export const RELEASES = [
   {
+    version: '2.4.0',
+    date: '2026-06-01',
+    title: 'Breadcrumb, sidebar cinza-azulada e popover de status/tipo',
+    items: [
+      { type: 'feat', text: 'Topbar agora mostra breadcrumb: Espaço / Pasta / Lista' },
+      { type: 'feat', text: 'Botão de mostrar/ocultar (ou adicionar) descrição movido pro topbar, ao lado do nome da lista' },
+      { type: 'feat', text: 'Click na bolinha do status abre popover com 2 abas: Status e Tipo de tarefa' },
+      { type: 'feat', text: 'Pesquisa dentro do popover para listas grandes' },
+      { type: 'feat', text: 'Tipos de tarefa por espaço — 4 tipos padrão (Tarefa, Marco, Acompanhamento, Caminho crítico)' },
+      { type: 'chore', text: 'Sidebar com tom cinza-azulado (var --color-sidebar)' },
+      { type: 'chore', text: 'Schema v12: tabela `space_task_types` + coluna `tasks.type_id` + trigger pra criar padrões' },
+    ],
+  },
+  {
+    version: '2.3.0',
+    date: '2026-06-01',
+    title: 'Descrição da Lista',
+    items: [
+      { type: 'feat', text: 'Card de descrição no topo da Lista — contexto do projeto antes das tarefas' },
+      { type: 'feat', text: 'Botão "Adicionar descrição" na toolbar quando ainda não existe' },
+      { type: 'feat', text: 'Click no card abre edição inline (Ctrl+Enter salva, Esc cancela)' },
+      { type: 'feat', text: 'Botão "Ocultar / Mostrar descrição" na toolbar (preferência por lista no localStorage)' },
+      { type: 'chore', text: 'Schema v11: coluna `description` em `lists`' },
+    ],
+  },
+  {
     version: '2.2.0',
     date: '2026-06-01',
     title: 'Ações rápidas e criação inline de subtarefa',

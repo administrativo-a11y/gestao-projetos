@@ -202,6 +202,52 @@
 
 .topbarLeft { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
 .topbarRight { display: flex; align-items: center; gap: 8px; }
+
+/* Breadcrumb */
+.breadcrumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
+}
+.crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px;
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  border-radius: var(--radius-sm);
+  max-width: 180px;
+  cursor: default;
+}
+.crumb .crumbText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crumbIcon {
+  font-size: 13px;
+  line-height: 1;
+}
+.crumbIconSvg {
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+.crumbSep {
+  color: var(--color-text-tertiary);
+  opacity: 0.5;
+  font-size: 13px;
+  margin: 0 2px;
+}
+.crumbCurrent {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
 .listName {
   font-size: 15px;
   font-weight: 500;
@@ -211,9 +257,37 @@
   padding: 2px 6px;
   border-radius: var(--radius-sm);
   border: 0.5px solid transparent;
+  background: none;
+  font-family: var(--font-sans);
   transition: border-color 0.12s, background 0.12s;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
 }
 .listName:hover { border-color: var(--color-border); background: var(--color-surface-2); }
+
+.descBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  border: 0.5px solid transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.descBtn:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-strong);
+}
 
 .listNameInput {
   font-size: 15px;
