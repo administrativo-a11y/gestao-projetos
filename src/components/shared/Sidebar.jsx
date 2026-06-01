@@ -8,6 +8,7 @@ import ContextMenu from './ContextMenu'
 import ReleaseNotesModal from './ReleaseNotesModal'
 import SpaceSettingsModal from '../space/SpaceSettingsModal'
 import FolderPermissionsPanel from '../folder/FolderPermissionsPanel'
+import ImportModal from '../import/ImportModal'
 import { CURRENT_VERSION } from '../../data/releases'
 import styles from './Sidebar.module.css'
 
@@ -107,6 +108,7 @@ export default function Sidebar() {
   const [showSpaceSettings, setShowSpaceSettings] = useState(false)
   const [permissionsFolder, setPermissionsFolder] = useState(null)
   const [showReleases, setShowReleases] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [lastSeenVersion, setLastSeenVersion] = useState(() => {
     try { return localStorage.getItem('gp.last_seen_version') } catch { return null }
   })
@@ -274,6 +276,7 @@ export default function Sidebar() {
                   items={[
                     { label: 'Renomear', onClick: () => startEditing('space', activeSpace.id, activeSpace.name) },
                     { label: 'Configurações do espaço', onClick: () => setShowSpaceSettings(true) },
+                    { label: 'Importar...', onClick: () => setShowImport(true) },
                     { separator: true },
                     {
                       label: showArchived ? 'Ocultar arquivados' : 'Mostrar arquivados',
@@ -585,6 +588,9 @@ export default function Sidebar() {
       </aside>
 
       {showReleases && <ReleaseNotesModal onClose={() => setShowReleases(false)} />}
+      {showImport && activeSpace && (
+        <ImportModal space={activeSpace} onClose={() => setShowImport(false)} />
+      )}
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
       {showSpaceSettings && activeSpace && (
         <SpaceSettingsModal space={activeSpace} onClose={() => setShowSpaceSettings(false)} />
