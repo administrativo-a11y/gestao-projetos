@@ -13,4 +13,4 @@ alter table public.lists add column if not exists description text;
 -- 2) Recarrega cache PostgREST pra reconhecer a coluna nova
 -- ============================================================
 
-notify pgrst, 'reload schema';
+select pg_notify('pgrst', 'reload schema');

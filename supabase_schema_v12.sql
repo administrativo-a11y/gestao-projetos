@@ -141,4 +141,4 @@ end $$;
 -- 8) Reload cache PostgREST
 -- ============================================================
 
-notify pgrst, 'reload schema';
+select pg_notify('pgrst', 'reload schema');
