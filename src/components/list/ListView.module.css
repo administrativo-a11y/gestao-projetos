@@ -12,6 +12,88 @@
   margin-bottom: 4px;
 }
 
+/* Card de descrição da Lista, exibido no topo antes dos grupos */
+.listDescCard {
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  margin-bottom: 4px;
+}
+.listDescView {
+  cursor: text;
+  border-radius: var(--radius-sm);
+  transition: background 0.12s;
+}
+.listDescView:hover { background: var(--color-surface-2); }
+.listDescContent {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  padding: 2px;
+}
+.listDescTextarea {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.6;
+  border: 0.5px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  outline: none;
+  font-family: var(--font-sans);
+  resize: vertical;
+  min-height: 90px;
+}
+.listDescTextarea:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light);
+}
+.listDescActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  gap: 12px;
+}
+.listDescHint {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+.listDescButtons { display: flex; gap: 6px; }
+.listDescBtnCancel,
+.listDescBtnSave {
+  padding: 5px 14px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.listDescBtnCancel {
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border-strong);
+  color: var(--color-text-secondary);
+}
+.listDescBtnCancel:hover:not(:disabled) {
+  background: var(--color-surface-2);
+  color: var(--color-text-primary);
+}
+.listDescBtnSave {
+  background: var(--color-accent);
+  border: 0.5px solid var(--color-accent);
+  color: #fff;
+}
+.listDescBtnSave:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+.listDescBtnSave:disabled,
+.listDescBtnCancel:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .count {
   font-size: 12px;
   color: var(--color-text-tertiary);
