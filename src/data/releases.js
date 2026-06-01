@@ -3,6 +3,22 @@
 
 export const RELEASES = [
   {
+    version: '2.0.0',
+    date: '2026-05-29',
+    title: 'Importação de MS Project e CSV',
+    items: [
+      { type: 'feat', text: 'Menu do espaço → "Importar..." abre wizard de 4 passos' },
+      { type: 'feat', text: 'Aceita .xml (MS Project) e .csv' },
+      { type: 'feat', text: 'CSV: detecção automática de delimitador (, ou ;) e mapeamento por nome de coluna' },
+      { type: 'feat', text: 'CSV: colunas desconhecidas viram campos personalizados automaticamente' },
+      { type: 'feat', text: 'MS Project: tarefas-resumo viram tarefas com subtarefas (até 2 níveis)' },
+      { type: 'feat', text: 'MS Project: dependências FS importadas como vínculos no app' },
+      { type: 'feat', text: 'Responsáveis vinculados por e-mail (match em membros do espaço)' },
+      { type: 'feat', text: 'Destino flexível: criar lista nova OU adicionar a lista existente' },
+      { type: 'feat', text: 'Barra de progresso por fase + resumo de avisos' },
+    ],
+  },
+  {
     version: '1.9.0',
     date: '2026-05-29',
     title: 'Polimento de UI',
