@@ -3,6 +3,20 @@
 
 export const RELEASES = [
   {
+    version: '1.7.0',
+    date: '2026-05-29',
+    title: 'Comentários, Anexos e painel de colunas',
+    items: [
+      { type: 'feat', text: 'Coluna "Últimos comentários" na Lista — vê preview do último comentário sem abrir a tarefa' },
+      { type: 'feat', text: 'Coluna "Anexos" na Lista — badge com contagem de arquivos anexados' },
+      { type: 'feat', text: 'Botão "Colunas" abre painel deslizante à direita (estilo ClickUp)' },
+      { type: 'feat', text: 'Aba "Criar novo" lista todos os tipos de campo personalizado' },
+      { type: 'feat', text: 'Aba "Adicionar existente" com toggle de visibilidade Mostrado/Oculto por coluna' },
+      { type: 'feat', text: 'Excluir campo personalizado direto pelo painel' },
+      { type: 'feat', text: 'Busca de campos dentro do painel' },
+    ],
+  },
+  {
     version: '1.6.0',
     date: '2026-05-29',
     title: 'Lista mais flexível',

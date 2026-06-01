@@ -289,3 +289,40 @@ img.groupAvatar { object-fit: cover; }
   padding: 14px;
   font-style: italic;
 }
+
+.commentPreview {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  max-width: 280px;
+  font-size: 12px;
+}
+.commentAuthor {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.commentText {
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.commentTime {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  flex-shrink: 0;
+  font-style: italic;
+}
+
+.attachBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-2);
+  border: 0.5px solid var(--color-border);
+  border-radius: 99px;
+}

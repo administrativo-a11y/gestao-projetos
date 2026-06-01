@@ -12,14 +12,16 @@ import { ptBR } from 'date-fns/locale'
 import TaskDetailModal from '../board/TaskDetailModal'
 import NewTaskModal from '../board/NewTaskModal'
 import TaskQuickActions from '../task/TaskQuickActions'
-import ListSettingsModal from './ListSettingsModal'
+import ColumnsPanel from './ColumnsPanel'
+import { formatDistanceToNow } from 'date-fns'
 import styles from './ListView.module.css'
 
 const PRIORITY_LABEL = { high: 'Alta', medium: 'Média', low: 'Baixa' }
 const PRIORITY_CLASS = { high: 'priorityHigh', medium: 'priorityMed', low: 'priorityLow' }
-const STANDARD_KEYS = ['status', 'assignee', 'due_date', 'priority']
+const STANDARD_KEYS = ['status', 'assignee', 'due_date', 'priority', 'last_comment', 'attachments']
 const ORDER_KEY = (listId) => `gp.col_order.${listId}`
 const COLLAPSED_KEY = (listId) => `gp.collapsed_groups.${listId}`
+const HIDDEN_KEY = (listId) => `gp.hidden_cols.${listId}`
 
 const Chevron = ({ open }) => (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"
@@ -55,7 +57,8 @@ export default function ListView() {
   const [showNewTask, setShowNewTask] = useState(false)
   const [sortBy, setSortBy] = useState('position')
   const [groupBy, setGroupBy] = useState('none')
-  const [showSettings, setShowSettings] = useState(false)
+  const [showPanel, setShowPanel] = useState(false)
+  const [hiddenColumns, setHiddenColumns] = useState(new Set())
 
   // ── Column order (per usuário, por lista) ──────────────────────────
   const defaultOrder = useMemo(
@@ -93,6 +96,25 @@ export default function ListView() {
       setCollapsedGroups(raw ? new Set(JSON.parse(raw)) : new Set())
     } catch { setCollapsedGroups(new Set()) }
   }, [activeList?.id])
+
+  // ── Hidden columns ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (!activeList?.id) return
+    try {
+      const raw = localStorage.getItem(HIDDEN_KEY(activeList.id))
+      setHiddenColumns(raw ? new Set(JSON.parse(raw)) : new Set())
+    } catch { setHiddenColumns(new Set()) }
+  }, [activeList?.id])
+
+  function toggleColumnVisibility(key) {
+    setHiddenColumns(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      try { localStorage.setItem(HIDDEN_KEY(activeList.id), JSON.stringify([...next])) } catch { /* ignore */ }
+      return next
+    })
+  }
 
   function toggleGroup(key) {
     setCollapsedGroups(prev => {
@@ -260,6 +282,37 @@ export default function ListView() {
           </span>
         ),
       },
+      last_comment: {
+        key: 'last_comment', header: 'Últimos comentários',
+        cell: (task) => {
+          const all = task.comments ?? []
+          if (all.length === 0) return <span className={styles.none}>—</span>
+          const last = [...all].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
+          const author = last.profiles?.name?.split(' ')?.[0] ?? '?'
+          return (
+            <div className={styles.commentPreview} title={`${last.profiles?.name ?? '?'}: ${last.content}`}>
+              <span className={styles.commentAuthor}>{author}:</span>
+              <span className={styles.commentText}>{last.content}</span>
+              <span className={styles.commentTime}>{formatDistanceToNow(new Date(last.created_at), { addSuffix: false, locale: ptBR })}</span>
+            </div>
+          )
+        },
+      },
+      attachments: {
+        key: 'attachments', header: 'Anexos',
+        cell: (task) => {
+          const n = task.task_attachments?.length ?? 0
+          if (n === 0) return <span className={styles.none}>—</span>
+          return (
+            <span className={styles.attachBadge} title={`${n} anexo${n > 1 ? 's' : ''}`}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+              </svg>
+              {n}
+            </span>
+          )
+        },
+      },
     }
     customFields.forEach(f => {
       map[`cf:${f.id}`] = {
@@ -275,8 +328,11 @@ export default function ListView() {
   }, [customFields, statuses, doneStatusId])
 
   const orderedColumns = useMemo(
-    () => columnOrder.map(k => allColumns[k]).filter(Boolean),
-    [columnOrder, allColumns]
+    () => columnOrder
+      .filter(k => !hiddenColumns.has(k))
+      .map(k => allColumns[k])
+      .filter(Boolean),
+    [columnOrder, allColumns, hiddenColumns]
   )
 
   if (!activeList) return null
@@ -306,15 +362,16 @@ export default function ListView() {
             <button
               type="button"
               className={styles.gearBtn}
-              onClick={() => setShowSettings(true)}
-              title="Configurações da lista"
-              aria-label="Configurações da lista"
+              onClick={() => setShowPanel(true)}
+              title="Gerenciar colunas"
+              aria-label="Gerenciar colunas"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="15" y2="12"/>
+                <line x1="3" y1="18" x2="18" y2="18"/>
               </svg>
-              <span>Campos</span>
+              <span>Colunas</span>
             </button>
           </div>
         </div>
@@ -436,8 +493,14 @@ export default function ListView() {
         />
       )}
 
-      {showSettings && (
-        <ListSettingsModal list={activeList} onClose={() => setShowSettings(false)} />
+      {showPanel && (
+        <ColumnsPanel
+          listId={activeList.id}
+          hiddenKeys={hiddenColumns}
+          onToggleVisibility={toggleColumnVisibility}
+          customFields={customFields}
+          onClose={() => setShowPanel(false)}
+        />
       )}
     </>
   )
