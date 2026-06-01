@@ -3,6 +3,17 @@
 
 export const RELEASES = [
   {
+    version: '1.9.0',
+    date: '2026-05-29',
+    title: 'Polimento de UI',
+    items: [
+      { type: 'feat', text: 'Biblioteca de ícones SVG centralizada (estilo Lucide) — substitui os emojis no painel de colunas' },
+      { type: 'feat', text: 'Switch (toggle) maior e com animação mais suave' },
+      { type: 'chore', text: 'Sombras com tons mais quentes e gradação melhor' },
+      { type: 'chore', text: 'Bordas e fundos dos ícones do painel mais consistentes' },
+    ],
+  },
+  {
     version: '1.8.0',
     date: '2026-05-29',
     title: 'Arrastar pastas e listas na sidebar',
