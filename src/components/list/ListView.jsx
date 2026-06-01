@@ -26,6 +26,7 @@ const COLLAPSED_KEY = (listId) => `gp.collapsed_groups.${listId}`
 const HIDDEN_KEY = (listId) => `gp.hidden_cols.${listId}`
 const EXPANDED_DESC_KEY = (listId) => `gp.expanded_desc.${listId}`
 const LIST_DESC_HIDDEN_KEY = (listId) => `gp.list_desc_hidden.${listId}`
+const SHOW_ARCHIVED_KEY = (listId) => `gp.show_archived.${listId}`
 
 const Chevron = ({ open }) => (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"
@@ -87,9 +88,34 @@ export default function ListView() {
   const { members } = useSpaceMembers(activeSpace?.id)
   const { types: taskTypes } = useSpaceTaskTypes(activeSpace?.id)
   const { filters } = useTaskFilters()
+  const [showArchived, setShowArchivedState] = useState(false)
+  useEffect(() => {
+    if (!activeList?.id) return
+    try {
+      const v = localStorage.getItem(SHOW_ARCHIVED_KEY(activeList.id))
+      setShowArchivedState(v === '1')
+    } catch { setShowArchivedState(false) }
+  }, [activeList?.id])
+  function toggleShowArchived() {
+    setShowArchivedState(prev => {
+      const next = !prev
+      try { localStorage.setItem(SHOW_ARCHIVED_KEY(activeList.id), next ? '1' : '0') } catch { /* ignore */ }
+      return next
+    })
+  }
+
+  // Filtra tarefas com status closed quando showArchived = false
+  const closedStatusIds = useMemo(
+    () => new Set(statuses.filter(s => (s.category ?? 'open') === 'closed').map(s => s.id)),
+    [statuses]
+  )
+  const visibleByCategory = useMemo(
+    () => showArchived ? tasks : tasks.filter(t => !closedStatusIds.has(t.status_id)),
+    [tasks, closedStatusIds, showArchived]
+  )
   const filteredTasks = useMemo(
-    () => applyFilters(tasks, statuses, filters, user?.id),
-    [tasks, statuses, filters, user?.id]
+    () => applyFilters(visibleByCategory, statuses, filters, user?.id),
+    [visibleByCategory, statuses, filters, user?.id]
   )
   const [selectedTask, setSelectedTask] = useState(null)
   const [showNewTask, setShowNewTask] = useState(false)
@@ -357,7 +383,10 @@ export default function ListView() {
   // ── Groups ─────────────────────────────────────────────────────────
   const groups = useMemo(() => {
     if (groupBy === 'status') {
-      return statuses.map(s => ({
+      const visibleStatuses = showArchived
+        ? statuses
+        : statuses.filter(s => (s.category ?? 'open') === 'open')
+      return visibleStatuses.map(s => ({
         key: `status:${s.id}`,
         header: { dot: s.color, label: s.name },
         items: sorted.filter(t => t.status_id === s.id),
@@ -531,6 +560,23 @@ export default function ListView() {
               <option value="priority">Prioridade</option>
               <option value="due_date">Prazo</option>
             </select>
+            {closedStatusIds.size > 0 && (
+              <button
+                type="button"
+                className={`${styles.gearBtn} ${showArchived ? styles.gearBtnActive : ''}`}
+                onClick={toggleShowArchived}
+                title={showArchived ? 'Ocultar tarefas arquivadas' : 'Mostrar tarefas arquivadas'}
+                aria-label={showArchived ? 'Ocultar arquivadas' : 'Mostrar arquivadas'}
+                aria-pressed={showArchived}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                  <polyline points="21 8 21 21 3 21 3 8"/>
+                  <rect x="1" y="3" width="22" height="5"/>
+                  <line x1="10" y1="12" x2="14" y2="12"/>
+                </svg>
+                <span>{showArchived ? 'Ocultar arquivadas' : 'Mostrar arquivadas'}</span>
+              </button>
+            )}
             <button
               type="button"
               className={styles.gearBtn}

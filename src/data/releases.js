@@ -3,6 +3,21 @@
 
 export const RELEASES = [
   {
+    version: '2.5.0',
+    date: '2026-06-01',
+    title: 'Categoria de status + arquivamento',
+    items: [
+      { type: 'feat', text: 'Status agora têm categoria: aberto (visível) ou fechado (arquivado, oculto por padrão)' },
+      { type: 'feat', text: 'Defaults novos pra espaços: TO START, EM PROGRESSO, PENDING, ON HOLD, REVIEW, CANCELED, DONE, ARCHIVE' },
+      { type: 'feat', text: 'Aba Status no SpaceSettings agora tem 2 grupos visuais; arrastar entre eles muda a categoria' },
+      { type: 'feat', text: 'Popover de status na Lista mostra os 2 grupos (Status e Fechado)' },
+      { type: 'feat', text: 'Botão "Mostrar arquivadas" na toolbar da Lista (preferência por lista no localStorage)' },
+      { type: 'feat', text: 'Botão "Resetar pros padrões" no SpaceSettings (substitui o conjunto atual pelos 8 padrões)' },
+      { type: 'fix', text: 'Detecta e oferece limpeza de status "Novo status" duplicados' },
+      { type: 'chore', text: 'Schema v13: coluna `category` em space_statuses e list_statuses; RPCs reset_space_statuses e cleanup_novo_status' },
+    ],
+  },
+  {
     version: '2.4.0',
     date: '2026-06-01',
     title: 'Breadcrumb, sidebar cinza-azulada e popover de status/tipo',

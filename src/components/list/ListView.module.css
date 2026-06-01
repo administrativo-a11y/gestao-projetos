@@ -142,6 +142,16 @@
   background: var(--color-surface-2);
   border-color: var(--color-text-tertiary);
 }
+.gearBtnActive {
+  color: var(--color-accent);
+  background: var(--color-accent-light);
+  border-color: var(--color-accent);
+}
+.gearBtnActive:hover {
+  color: var(--color-accent-hover);
+  background: var(--color-accent-light);
+  border-color: var(--color-accent-hover);
+}
 
 .table {
   width: 100%;
