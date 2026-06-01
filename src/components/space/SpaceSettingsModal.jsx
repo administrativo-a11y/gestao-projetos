@@ -72,7 +72,7 @@ function MembersTab({ spaceId }) {
   const {
     members, invitations, loading,
     updateRole, removeMember,
-    createInvitation, revokeInvitation,
+    createInvitation, revokeInvitation, resendInvitationEmail,
     inviteUrl, ownersCount,
   } = useSpaceMembers(spaceId)
 
@@ -81,6 +81,8 @@ function MembersTab({ spaceId }) {
   const [creating, setCreating] = useState(false)
   const [copiedToken, setCopiedToken] = useState(null)
   const [error, setError] = useState('')
+  const [feedback, setFeedback] = useState(null) // { type: 'ok'|'warn', text }
+  const [resendingId, setResendingId] = useState(null)
 
   const me = members.find(m => m.user_id === user?.id)
   const isAdmin = me && (me.role === 'owner' || me.role === 'admin')
@@ -88,11 +90,35 @@ function MembersTab({ spaceId }) {
 
   async function handleCreateInvite() {
     setError('')
+    setFeedback(null)
     setCreating(true)
-    const { error } = await createInvitation({ email: inviteEmail, role: inviteRole })
+    const { error, emailSent, emailError } = await createInvitation({ email: inviteEmail, role: inviteRole })
     setCreating(false)
-    if (error) setError(error.message)
-    else setInviteEmail('')
+    if (error) {
+      setError(error.message)
+      return
+    }
+    if (inviteEmail.trim()) {
+      if (emailSent) {
+        setFeedback({ type: 'ok', text: `E-mail enviado para ${inviteEmail.trim()}.` })
+      } else {
+        setFeedback({
+          type: 'warn',
+          text: `Convite criado, mas o e-mail não foi enviado${emailError ? ` (${emailError})` : ''}. Copie o link abaixo e compartilhe manualmente.`,
+        })
+      }
+    } else {
+      setFeedback({ type: 'ok', text: 'Link de convite gerado. Copie e compartilhe.' })
+    }
+    setInviteEmail('')
+  }
+
+  async function handleResend(inv) {
+    setResendingId(inv.id)
+    const r = await resendInvitationEmail(inv.id)
+    setResendingId(null)
+    if (r.ok) setFeedback({ type: 'ok', text: `E-mail reenviado para ${inv.email}.` })
+    else setFeedback({ type: 'warn', text: `Falha ao reenviar: ${r.error}` })
   }
 
   async function copyLink(token) {
@@ -161,12 +187,17 @@ function MembersTab({ spaceId }) {
               onClick={handleCreateInvite}
               disabled={creating}
             >
-              {creating ? 'Gerando...' : 'Gerar link'}
+              {creating ? 'Enviando...' : (inviteEmail.trim() ? 'Convidar' : 'Gerar link')}
             </button>
           </div>
           <p className={styles.note}>
-            O e-mail é opcional. Gere o link e compartilhe — quem abrir e fizer login entra como o papel escolhido.
+            Com e-mail: o sistema dispara o convite automaticamente. Sem e-mail: gera só o link pra você compartilhar.
           </p>
+          {feedback && (
+            <div className={feedback.type === 'ok' ? styles.feedbackOk : styles.feedbackWarn}>
+              {feedback.text}
+            </div>
+          )}
         </section>
       )}
 
@@ -181,6 +212,16 @@ function MembersTab({ spaceId }) {
                   <span className={styles.rolePill}>{ROLES.find(r => r.id === inv.role)?.label ?? inv.role}</span>
                 </div>
                 <div className={styles.rowActions}>
+                  {inv.email && isAdmin && (
+                    <button
+                      className={styles.linkBtn}
+                      onClick={() => handleResend(inv)}
+                      disabled={resendingId === inv.id}
+                      title="Reenviar convite por e-mail"
+                    >
+                      {resendingId === inv.id ? 'Enviando...' : 'Reenviar e-mail'}
+                    </button>
+                  )}
                   <button className={styles.linkBtn} onClick={() => copyLink(inv.token)}>
                     {copiedToken === inv.token ? 'Copiado!' : 'Copiar link'}
                   </button>

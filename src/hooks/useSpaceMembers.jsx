@@ -65,8 +65,42 @@ export function useSpaceMembers(spaceId) {
       .insert(payload)
       .select()
       .single()
-    if (!error) await refetch()
-    return { data, error }
+    if (error) return { data: null, error, emailSent: false }
+
+    let emailSent = false
+    let emailError = null
+    // Se tem e-mail, tenta disparar via Edge Function (silencioso se falhar)
+    if (payload.email) {
+      try {
+        const { data: fnData, error: fnError } = await supabase.functions.invoke('send-invite-email', {
+          body: {
+            invitationId: data.id,
+            siteUrl: window.location.origin,
+          },
+        })
+        if (fnError) emailError = fnError.message ?? String(fnError)
+        else if (fnData?.ok) emailSent = true
+        else if (fnData?.error) emailError = fnData.error
+      } catch (e) {
+        emailError = e?.message ?? String(e)
+      }
+    }
+
+    await refetch()
+    return { data, error: null, emailSent, emailError }
+  }
+
+  async function resendInvitationEmail(invitationId) {
+    try {
+      const { data, error } = await supabase.functions.invoke('send-invite-email', {
+        body: { invitationId, siteUrl: window.location.origin },
+      })
+      if (error) return { ok: false, error: error.message ?? String(error) }
+      if (data?.ok) return { ok: true }
+      return { ok: false, error: data?.error ?? 'falha desconhecida' }
+    } catch (e) {
+      return { ok: false, error: e?.message ?? String(e) }
+    }
   }
 
   async function revokeInvitation(invitationId) {
@@ -90,7 +124,7 @@ export function useSpaceMembers(spaceId) {
   return {
     members, invitations, loading,
     updateRole, removeMember,
-    createInvitation, revokeInvitation,
+    createInvitation, revokeInvitation, resendInvitationEmail,
     inviteUrl, ownersCount,
     refetch,
   }
