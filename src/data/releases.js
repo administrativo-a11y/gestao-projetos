@@ -3,6 +3,18 @@
 
 export const RELEASES = [
   {
+    version: '2.6.0',
+    date: '2026-06-01',
+    title: 'Convite por e-mail automático',
+    items: [
+      { type: 'feat', text: 'Adicionar e-mail no formulário de convite dispara o e-mail automaticamente' },
+      { type: 'feat', text: 'E-mail vem do Supabase Auth (template "Magic Link"); destinatário faz login direto pelo link' },
+      { type: 'feat', text: 'Botão "Reenviar e-mail" em cada convite pendente' },
+      { type: 'feat', text: 'Feedback visual: verde quando enviado, amarelo se falhou (oferece link manual)' },
+      { type: 'chore', text: 'Edge Function `send-invite-email` (Deno + signInWithOtp)' },
+    ],
+  },
+  {
     version: '2.5.0',
     date: '2026-06-01',
     title: 'Categoria de status + arquivamento',
