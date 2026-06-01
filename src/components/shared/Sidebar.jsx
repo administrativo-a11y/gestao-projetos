@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { useAuth } from '../../hooks/useAuth'
 import { useApp } from '../../hooks/useApp'
 import { useTheme } from '../../hooks/useTheme'
@@ -97,6 +98,7 @@ export default function Sidebar() {
     createList, updateList, softDeleteList,
     archiveList, unarchiveList, archiveFolder, unarchiveFolder,
     duplicateList, duplicateFolder,
+    reorderFolders, reorderLists,
   } = useApp()
 
   const [spaceDropdown, setSpaceDropdown] = useState(false)
@@ -203,6 +205,36 @@ export default function Sidebar() {
   // Listas sem pasta (direto no espaço)
   const rootLists = visibleLists.filter(l => !l.folder_id)
 
+  // Drag-drop pra reordenar
+  function handleDragEnd(result) {
+    const { source, destination, type } = result
+    if (!destination) return
+    if (source.droppableId === destination.droppableId && source.index === destination.index) return
+
+    if (type === 'folder') {
+      const ids = visibleFolders.map(f => f.id)
+      const [moved] = ids.splice(source.index, 1)
+      ids.splice(destination.index, 0, moved)
+      reorderFolders(ids)
+      return
+    }
+
+    if (type === 'list' && source.droppableId === destination.droppableId) {
+      let scope
+      if (source.droppableId === 'root-lists') {
+        scope = rootLists.map(l => l.id)
+      } else if (source.droppableId.startsWith('folder-') && source.droppableId.endsWith('-lists')) {
+        const folderId = source.droppableId.slice('folder-'.length, -'-lists'.length)
+        scope = visibleLists.filter(l => l.folder_id === folderId).map(l => l.id)
+      } else {
+        return
+      }
+      const [moved] = scope.splice(source.index, 1)
+      scope.splice(destination.index, 0, moved)
+      reorderLists(scope)
+    }
+  }
+
   return (
     <>
       <aside className={styles.sidebar}>
@@ -293,15 +325,25 @@ export default function Sidebar() {
         {/* Conteúdo do espaço ativo */}
         {activeSpace ? (
           <>
+            <DragDropContext onDragEnd={handleDragEnd}>
             <nav className={styles.tree}>
               {/* Pastas */}
-              {visibleFolders.map(folder => {
+              <Droppable droppableId="root-folders" type="folder">
+              {(__provFolders) => (
+              <div ref={__provFolders.innerRef} {...__provFolders.droppableProps}>
+              {visibleFolders.map((folder, __fIdx) => {
                 const folderLists = visibleLists.filter(l => l.folder_id === folder.id)
                 const isOpen = expandedFolders[folder.id]
                 const isArchived = !!folder.archived_at
                 return (
-                  <div key={folder.id} className={isArchived ? styles.archivedItem : ''}>
-                    <div className={styles.treeRow}>
+                  <Draggable key={folder.id} draggableId={`folder-${folder.id}`} index={__fIdx}>
+                  {(__dpF, __snapF) => (
+                  <div
+                    ref={__dpF.innerRef}
+                    {...__dpF.draggableProps}
+                    className={`${isArchived ? styles.archivedItem : ''} ${__snapF.isDragging ? styles.dragging : ''}`}
+                  >
+                    <div className={styles.treeRow} {...__dpF.dragHandleProps}>
                       <button className={styles.treeToggle} onClick={() => !isEditing('folder', folder.id) && toggleFolder(folder.id)}>
                         <Chevron open={isOpen} />
                         {isArchived ? <Archive /> : <FolderIcon />}
@@ -344,11 +386,20 @@ export default function Sidebar() {
                     </div>
 
                     {isOpen && (
-                      <div className={styles.nested}>
-                        {folderLists.map(list => {
+                      <Droppable droppableId={`folder-${folder.id}-lists`} type="list">
+                      {(__provL) => (
+                      <div ref={__provL.innerRef} {...__provL.droppableProps} className={styles.nested}>
+                        {folderLists.map((list, __lIdx) => {
                           const listArchived = !!list.archived_at
                           return (
-                            <div key={list.id} className={`${styles.listRow} ${listArchived ? styles.archivedItem : ''}`}>
+                            <Draggable key={list.id} draggableId={`list-${list.id}`} index={__lIdx}>
+                            {(__dpL, __snapL) => (
+                            <div
+                              ref={__dpL.innerRef}
+                              {...__dpL.draggableProps}
+                              {...__dpL.dragHandleProps}
+                              className={`${styles.listRow} ${listArchived ? styles.archivedItem : ''} ${__snapL.isDragging ? styles.dragging : ''}`}
+                            >
                               <button
                                 className={`${styles.listBtn} ${activeList?.id === list.id ? styles.listActive : ''}`}
                                 onClick={() => !isEditing('list', list.id) && selectList(list)}
@@ -380,28 +431,53 @@ export default function Sidebar() {
                                 ]}
                               />
                             </div>
+                            )}
+                            </Draggable>
                           )
                         })}
+                        {__provL.placeholder}
                         {folderLists.length === 0 && (
                           <p className={styles.hint}>Nenhuma lista</p>
                         )}
                       </div>
+                      )}
+                      </Droppable>
                     )}
                   </div>
+                  )}
+                  </Draggable>
                 )
               })}
+              {__provFolders.placeholder}
+              </div>
+              )}
+              </Droppable>
 
               {/* Listas diretas (sem pasta) */}
-              {rootLists.map(list => {
+              <Droppable droppableId="root-lists" type="list">
+              {(__provR) => (
+              <div ref={__provR.innerRef} {...__provR.droppableProps}>
+              {rootLists.map((list, __rIdx) => {
                 const listArchived = !!list.archived_at
                 return (
-                  <div key={list.id} className={`${styles.listRow} ${listArchived ? styles.archivedItem : ''}`}>
+                  <Draggable key={list.id} draggableId={`list-${list.id}`} index={__rIdx}>
+                  {(__dpR, __snapR) => (
+                  <div
+                    ref={__dpR.innerRef}
+                    {...__dpR.draggableProps}
+                    {...__dpR.dragHandleProps}
+                    className={`${styles.listRow} ${listArchived ? styles.archivedItem : ''} ${__snapR.isDragging ? styles.dragging : ''}`}
+                  >
                     <button
                       className={`${styles.listBtn} ${activeList?.id === list.id ? styles.listActive : ''}`}
-                      onClick={() => selectList(list)}
+                      onClick={() => !isEditing('list', list.id) && selectList(list)}
                     >
                       {listArchived ? <Archive /> : <ListIcon />}
-                      <span className={styles.treeName}>{list.name}</span>
+                      {isEditing('list', list.id) ? (
+                        <RenameInput kind="list" id={list.id} />
+                      ) : (
+                        <span className={styles.treeName}>{list.name}</span>
+                      )}
                     </button>
                     <ContextMenu
                       trigger={
@@ -410,6 +486,7 @@ export default function Sidebar() {
                         </button>
                       }
                       items={[
+                        { label: 'Renomear', onClick: () => startEditing('list', list.id, list.name) },
                         { label: 'Duplicar', icon: <Copy />, onClick: async () => {
                           const { error } = await duplicateList(list.id)
                           if (error) alert(error.message)
@@ -422,8 +499,14 @@ export default function Sidebar() {
                       ]}
                     />
                   </div>
+                  )}
+                  </Draggable>
                 )
               })}
+              {__provR.placeholder}
+              </div>
+              )}
+              </Droppable>
 
               {visibleFolders.length === 0 && rootLists.length === 0 && (
                 <p className={styles.hint}>
@@ -431,6 +514,7 @@ export default function Sidebar() {
                 </p>
               )}
             </nav>
+            </DragDropContext>
           </>
         ) : (
           <div className={styles.noSpace}>

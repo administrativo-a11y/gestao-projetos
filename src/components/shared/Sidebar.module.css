@@ -109,6 +109,13 @@
 .archivedItem { opacity: 0.55; }
 .archivedItem:hover { opacity: 0.85; }
 
+.dragging {
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-md);
+  opacity: 0.9;
+}
+
 .versionChip {
   display: inline-flex;
   align-items: center;

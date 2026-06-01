@@ -1,25 +1,33 @@
 import { useState, useEffect, useRef } from 'react'
 import { useCustomFields, FIELD_TYPES } from '../../hooks/useCustomFields'
+import {
+  STANDARD_COLUMN_ICONS, FIELD_TYPE_ICONS,
+  IconSearch, IconClose, IconTrash,
+} from '../shared/Icons'
 import styles from './ColumnsPanel.module.css'
 
 const STANDARD_COLUMNS = [
-  { key: 'status', label: 'Status', icon: '◐' },
-  { key: 'assignee', label: 'Responsável', icon: '👤' },
-  { key: 'due_date', label: 'Prazo', icon: '📅' },
-  { key: 'priority', label: 'Prioridade', icon: '⬆' },
-  { key: 'last_comment', label: 'Últimos comentários', icon: '💬' },
-  { key: 'attachments', label: 'Anexos', icon: '📎' },
+  { key: 'status', label: 'Status' },
+  { key: 'assignee', label: 'Responsável' },
+  { key: 'due_date', label: 'Prazo' },
+  { key: 'priority', label: 'Prioridade' },
+  { key: 'last_comment', label: 'Últimos comentários' },
+  { key: 'attachments', label: 'Anexos' },
 ]
 
-const TYPE_ICONS = {
-  text: 'T', number: '#', date: '📅', select: '◉', multi_select: '☰',
-  user: '👤', checkbox: '☑', currency: '$', url: '🔗', email: '✉', phone: '☎',
+function ColumnIcon({ columnKey, isCustom, fieldType }) {
+  if (isCustom) {
+    const Icon = FIELD_TYPE_ICONS[fieldType] ?? FIELD_TYPE_ICONS.text
+    return <Icon size={14} />
+  }
+  const Icon = STANDARD_COLUMN_ICONS[columnKey] ?? FIELD_TYPE_ICONS.text
+  return <Icon size={14} />
 }
 
-function ColumnRow({ label, icon, isOn, onToggle }) {
+function ColumnRow({ label, iconNode, isOn, onToggle }) {
   return (
     <div className={styles.row}>
-      <span className={styles.rowIcon}>{icon}</span>
+      <span className={styles.rowIcon}>{iconNode}</span>
       <span className={styles.rowLabel}>{label}</span>
       <label className={styles.switch}>
         <input type="checkbox" checked={isOn} onChange={onToggle} />
@@ -89,11 +97,14 @@ export default function ColumnsPanel({
 
   // Colunas existentes mostradas / ocultas
   const allItems = [
-    ...STANDARD_COLUMNS,
+    ...STANDARD_COLUMNS.map(c => ({
+      ...c,
+      iconNode: <ColumnIcon columnKey={c.key} />,
+    })),
     ...customFields.map(f => ({
       key: `cf:${f.id}`,
       label: f.name,
-      icon: TYPE_ICONS[f.type] ?? '◇',
+      iconNode: <ColumnIcon isCustom fieldType={f.type} />,
       isCustom: true,
       fieldId: f.id,
     })),
@@ -138,16 +149,12 @@ export default function ColumnsPanel({
         <header className={styles.header}>
           <h2 className={styles.title}>Campos</h2>
           <button className={styles.closeBtn} onClick={onClose} aria-label="Fechar">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
+            <IconClose size={16} />
           </button>
         </header>
 
         <div className={styles.searchWrap}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
+          <IconSearch size={14} />
           <input
             type="text"
             placeholder="Pesquise campos..."
@@ -184,16 +191,19 @@ export default function ColumnsPanel({
               ) : (
                 <div className={styles.typesList}>
                   <p className={styles.sectionHint}>Escolha um tipo de campo personalizado:</p>
-                  {FIELD_TYPES.filter(t => matches(t.label)).map(t => (
-                    <button
-                      key={t.id}
-                      className={styles.typeItem}
-                      onClick={() => setCreatingType(t.id)}
-                    >
-                      <span className={styles.typeIcon}>{TYPE_ICONS[t.id] ?? '◇'}</span>
-                      <span>{t.label}</span>
-                    </button>
-                  ))}
+                  {FIELD_TYPES.filter(t => matches(t.label)).map(t => {
+                    const Icon = FIELD_TYPE_ICONS[t.id]
+                    return (
+                      <button
+                        key={t.id}
+                        className={styles.typeItem}
+                        onClick={() => setCreatingType(t.id)}
+                      >
+                        <span className={styles.typeIcon}>{Icon ? <Icon size={14} /> : null}</span>
+                        <span>{t.label}</span>
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </>
@@ -213,7 +223,7 @@ export default function ColumnsPanel({
                   <div key={it.key} className={styles.rowWrap}>
                     <ColumnRow
                       label={it.label}
-                      icon={it.icon}
+                      iconNode={it.iconNode}
                       isOn={true}
                       onToggle={() => onToggleVisibility(it.key)}
                     />
@@ -223,9 +233,7 @@ export default function ColumnsPanel({
                         title="Excluir campo"
                         onClick={() => handleDeleteCustomField(it)}
                       >
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-                        </svg>
+                        <IconTrash size={11} />
                       </button>
                     )}
                   </div>
@@ -244,7 +252,7 @@ export default function ColumnsPanel({
                   <div key={it.key} className={styles.rowWrap}>
                     <ColumnRow
                       label={it.label}
-                      icon={it.icon}
+                      iconNode={it.iconNode}
                       isOn={false}
                       onToggle={() => onToggleVisibility(it.key)}
                     />
@@ -254,9 +262,7 @@ export default function ColumnsPanel({
                         title="Excluir campo"
                         onClick={() => handleDeleteCustomField(it)}
                       >
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-                        </svg>
+                        <IconTrash size={11} />
                       </button>
                     )}
                   </div>

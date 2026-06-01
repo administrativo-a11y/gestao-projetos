@@ -44,8 +44,14 @@ export function AppProvider({ children }) {
 
   const fetchFoldersAndLists = useCallback(async (spaceId) => {
     const [foldersRes, listsRes] = await Promise.all([
-      supabase.from('folders').select('*').eq('space_id', spaceId).is('deleted_at', null).order('created_at'),
-      supabase.from('lists').select('*, list_statuses(*)').eq('space_id', spaceId).is('deleted_at', null).order('created_at'),
+      supabase
+        .from('folders').select('*')
+        .eq('space_id', spaceId).is('deleted_at', null)
+        .order('position').order('created_at'),
+      supabase
+        .from('lists').select('*, list_statuses(*)')
+        .eq('space_id', spaceId).is('deleted_at', null)
+        .order('position').order('created_at'),
     ])
     setFolders(foldersRes.data ?? [])
     setLists(listsRes.data ?? [])
@@ -271,6 +277,37 @@ export function AppProvider({ children }) {
     return { newFolderId: data, error }
   }
 
+  // Atualiza position de várias pastas em lote (idx 0..n-1 conforme ordem)
+  async function reorderFolders(orderedIds) {
+    // Optimistic: reordena state local instantaneamente
+    setFolders(prev => {
+      const map = new Map(prev.map(f => [f.id, f]))
+      const reordered = orderedIds.map((id, idx) => map.get(id) ? { ...map.get(id), position: idx } : null).filter(Boolean)
+      const others = prev.filter(f => !orderedIds.includes(f.id))
+      return [...reordered, ...others]
+    })
+    const updates = orderedIds.map((id, idx) =>
+      supabase.from('folders').update({ position: idx }).eq('id', id)
+    )
+    await Promise.all(updates)
+    if (activeSpace) await fetchFoldersAndLists(activeSpace.id)
+  }
+
+  // Atualiza position de várias listas (mesmo escopo: mesma pasta ou raiz)
+  async function reorderLists(orderedIds) {
+    setLists(prev => {
+      const map = new Map(prev.map(l => [l.id, l]))
+      const reordered = orderedIds.map((id, idx) => map.get(id) ? { ...map.get(id), position: idx } : null).filter(Boolean)
+      const others = prev.filter(l => !orderedIds.includes(l.id))
+      return [...reordered, ...others]
+    })
+    const updates = orderedIds.map((id, idx) =>
+      supabase.from('lists').update({ position: idx }).eq('id', id)
+    )
+    await Promise.all(updates)
+    if (activeSpace) await fetchFoldersAndLists(activeSpace.id)
+  }
+
   // ── SIDEBAR ────────────────────────────────────────────────
 
   function toggleFolder(folderId) {
@@ -318,6 +355,7 @@ export function AppProvider({ children }) {
       createList, updateList, softDeleteList,
       archiveList, unarchiveList, archiveFolder, unarchiveFolder,
       duplicateList, duplicateFolder,
+      reorderFolders, reorderLists,
       undoToast, handleUndo,
     }}>
       {children}
