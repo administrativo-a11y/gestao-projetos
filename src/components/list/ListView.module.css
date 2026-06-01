@@ -282,13 +282,25 @@
 .row:hover .rowCheck,
 .row:focus-within .rowCheck { opacity: 1; }
 
-/* status dot junto ao título */
-.titleStatusDot {
+/* status dot junto ao título — clicável */
+.titleStatusBtn {
   display: inline-block;
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
+  border: none;
+  padding: 0;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.titleStatusBtn:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3px currentColor;
+}
+.titleStatusBtnEmpty {
+  background: transparent;
+  border: 1.5px dashed var(--color-text-tertiary);
 }
 
 /* botões + e ✎ aparecem no hover ao lado do título */

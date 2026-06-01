@@ -60,9 +60,53 @@ export default function AppPage() {
   const { spaceId, listId } = useParams()
   const navigate = useNavigate()
   const {
-    spaces, lists, activeList, activeSpace,
+    spaces, lists, folders, activeList, activeSpace,
     setActiveSpace, selectList, updateList,
   } = useApp()
+  const activeFolder = activeList?.folder_id
+    ? folders.find(f => f.id === activeList.folder_id) ?? null
+    : null
+
+  // Controle de exibição da descrição da lista (compartilhado com ListView via localStorage).
+  // O ListView monta esse mesmo flag; aqui mantemos uma cópia pra refletir no botão do topbar.
+  const [listDescHidden, setListDescHidden] = useState(false)
+  useEffect(() => {
+    if (!activeList?.id) { setListDescHidden(false); return }
+    try {
+      const v = localStorage.getItem(`gp.list_desc_hidden.${activeList.id}`)
+      setListDescHidden(v === '1')
+    } catch { setListDescHidden(false) }
+  }, [activeList?.id])
+  useEffect(() => {
+    function onStorage(e) {
+      if (!activeList?.id) return
+      if (e.key !== `gp.list_desc_hidden.${activeList.id}`) return
+      setListDescHidden(e.newValue === '1')
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [activeList?.id])
+
+  function toggleListDescriptionVisibility() {
+    if (!activeList?.id) return
+    setListDescHidden(prev => {
+      const next = !prev
+      try { localStorage.setItem(`gp.list_desc_hidden.${activeList.id}`, next ? '1' : '0') } catch { /* ignore */ }
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: `gp.list_desc_hidden.${activeList.id}`,
+        newValue: next ? '1' : '0',
+      }))
+      return next
+    })
+  }
+
+  async function startListDescription() {
+    if (!activeList?.id) return
+    // Garante visibilidade e abre modo edição via storage event customizado
+    try { localStorage.setItem(`gp.list_desc_hidden.${activeList.id}`, '0') } catch { /* ignore */ }
+    setListDescHidden(false)
+    window.dispatchEvent(new CustomEvent('gp:list_desc_edit', { detail: { listId: activeList.id } }))
+  }
   const [editingListName, setEditingListName] = useState(false)
   const [draftListName, setDraftListName] = useState('')
   const [activeView, setActiveViewState] = useState('board')
@@ -222,31 +266,87 @@ export default function AppPage() {
             <>
               <header className={styles.topbar}>
                 <div className={styles.topbarLeft}>
-                  {editingListName ? (
-                    <input
-                      type="text"
-                      autoFocus
-                      className={styles.listNameInput}
-                      value={draftListName}
-                      onChange={e => setDraftListName(e.target.value)}
-                      onBlur={async () => {
-                        const name = draftListName.trim()
-                        if (name && name !== activeList.name) await updateList(activeList.id, { name })
-                        setEditingListName(false)
-                      }}
-                      onKeyDown={async e => {
-                        if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() }
-                        if (e.key === 'Escape') { e.preventDefault(); setEditingListName(false) }
-                      }}
-                    />
-                  ) : (
-                    <span
-                      className={styles.listName}
-                      onClick={() => { setDraftListName(activeList.name); setEditingListName(true) }}
-                      title="Clique para renomear"
-                    >
-                      {activeList.name}
+                  <nav className={styles.breadcrumb} aria-label="Caminho">
+                    {activeSpace && (
+                      <>
+                        <span className={styles.crumb} title={activeSpace.name}>
+                          {activeSpace.icon && <span className={styles.crumbIcon}>{activeSpace.icon}</span>}
+                          <span className={styles.crumbText}>{activeSpace.name}</span>
+                        </span>
+                        <span className={styles.crumbSep} aria-hidden="true">/</span>
+                      </>
+                    )}
+                    {activeFolder && (
+                      <>
+                        <span className={styles.crumb} title={activeFolder.name}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" className={styles.crumbIconSvg}>
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                          </svg>
+                          <span className={styles.crumbText}>{activeFolder.name}</span>
+                        </span>
+                        <span className={styles.crumbSep} aria-hidden="true">/</span>
+                      </>
+                    )}
+                    <span className={styles.crumbCurrent}>
+                      {editingListName ? (
+                        <input
+                          type="text"
+                          autoFocus
+                          className={styles.listNameInput}
+                          value={draftListName}
+                          onChange={e => setDraftListName(e.target.value)}
+                          onBlur={async () => {
+                            const name = draftListName.trim()
+                            if (name && name !== activeList.name) await updateList(activeList.id, { name })
+                            setEditingListName(false)
+                          }}
+                          onKeyDown={async e => {
+                            if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() }
+                            if (e.key === 'Escape') { e.preventDefault(); setEditingListName(false) }
+                          }}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          className={styles.listName}
+                          onClick={() => { setDraftListName(activeList.name); setEditingListName(true) }}
+                          title="Clique para renomear"
+                        >
+                          {activeList.name}
+                        </button>
+                      )}
                     </span>
+                  </nav>
+                  {activeList.description ? (
+                    <button
+                      type="button"
+                      className={styles.descBtn}
+                      onClick={toggleListDescriptionVisibility}
+                      title={listDescHidden ? 'Mostrar descrição' : 'Ocultar descrição'}
+                      aria-label={listDescHidden ? 'Mostrar descrição' : 'Ocultar descrição'}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                        <line x1="8" y1="6" x2="21" y2="6"/>
+                        <line x1="8" y1="12" x2="21" y2="12"/>
+                        <line x1="8" y1="18" x2="21" y2="18"/>
+                        <line x1="3" y1="6" x2="3.01" y2="6"/>
+                        <line x1="3" y1="12" x2="3.01" y2="12"/>
+                        <line x1="3" y1="18" x2="3.01" y2="18"/>
+                      </svg>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.descBtn}
+                      onClick={startListDescription}
+                      title="Adicionar descrição à lista"
+                      aria-label="Adicionar descrição"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                    </button>
                   )}
                 </div>
                 <nav className={styles.tabs}>

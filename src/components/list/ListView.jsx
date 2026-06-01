@@ -4,9 +4,11 @@ import { useApp } from '../../hooks/useApp'
 import { useAuth } from '../../hooks/useAuth'
 import { useCustomFields } from '../../hooks/useCustomFields'
 import { useSpaceMembers } from '../../hooks/useSpaceMembers'
+import { useSpaceTaskTypes } from '../../hooks/useSpaceTaskTypes'
 import { useTaskFilters, applyFilters } from '../../hooks/useTaskFilters'
 import { useTaskFromQuery, taskShareUrl } from '../../hooks/useTaskFromQuery'
 import CustomFieldDisplay from '../task/CustomFieldDisplay'
+import StatusTypePopover from '../task/StatusTypePopover'
 import { format, isPast, isToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import TaskDetailModal from '../board/TaskDetailModal'
@@ -80,9 +82,10 @@ function getInitials(n) {
 export default function ListView() {
   const { activeList, activeSpace, updateList } = useApp()
   const { user } = useAuth()
-  const { statuses, tasks, loading, toggleDone, duplicateTask, softDeleteTask, addSubtask } = useTasks(activeList?.id)
+  const { statuses, tasks, loading, toggleDone, duplicateTask, softDeleteTask, addSubtask, updateTask } = useTasks(activeList?.id)
   const { fields: customFields } = useCustomFields(activeList?.id)
   const { members } = useSpaceMembers(activeSpace?.id)
+  const { types: taskTypes } = useSpaceTaskTypes(activeSpace?.id)
   const { filters } = useTaskFilters()
   const filteredTasks = useMemo(
     () => applyFilters(tasks, statuses, filters, user?.id),
@@ -162,6 +165,23 @@ export default function ListView() {
     })
   }
 
+  // ── Popover Status / Tipo ──────────────────────────────────────────
+  const [statusPopover, setStatusPopover] = useState(null) // { taskId, rect }
+  function openStatusPopover(taskId, e) {
+    if (e) { e.stopPropagation(); e.preventDefault() }
+    const rect = e?.currentTarget?.getBoundingClientRect?.()
+    setStatusPopover({ taskId, rect })
+  }
+  function closeStatusPopover() { setStatusPopover(null) }
+  async function pickStatusForTask(statusId) {
+    if (!statusPopover?.taskId) return
+    await updateTask(statusPopover.taskId, { status_id: statusId })
+  }
+  async function pickTypeForTask(typeId) {
+    if (!statusPopover?.taskId) return
+    await updateTask(statusPopover.taskId, { type_id: typeId })
+  }
+
   // ── Inline subtask creation ────────────────────────────────────────
   const [addingSubtaskFor, setAddingSubtaskFor] = useState(null) // taskId
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
@@ -205,6 +225,28 @@ export default function ListView() {
     } catch { setListDescHidden(false) }
     setEditingListDesc(false)
     setDraftListDesc(activeList?.description ?? '')
+  }, [activeList?.id, activeList?.description])
+
+  // Sincroniza visibilidade com mudanças disparadas pelo topbar
+  useEffect(() => {
+    function onStorage(e) {
+      if (!activeList?.id) return
+      if (e.key !== LIST_DESC_HIDDEN_KEY(activeList.id)) return
+      setListDescHidden(e.newValue === '1')
+    }
+    function onEdit(e) {
+      if (!activeList?.id) return
+      if (e.detail?.listId !== activeList.id) return
+      setDraftListDesc(activeList?.description ?? '')
+      setEditingListDesc(true)
+      setListDescHidden(false)
+    }
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('gp:list_desc_edit', onEdit)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('gp:list_desc_edit', onEdit)
+    }
   }, [activeList?.id, activeList?.description])
 
   function toggleListDesc() {
@@ -489,39 +531,6 @@ export default function ListView() {
               <option value="priority">Prioridade</option>
               <option value="due_date">Prazo</option>
             </select>
-            {activeList?.description ? (
-              <button
-                type="button"
-                className={styles.gearBtn}
-                onClick={toggleListDesc}
-                title={listDescHidden ? 'Mostrar descrição da lista' : 'Ocultar descrição da lista'}
-                aria-label={listDescHidden ? 'Mostrar descrição da lista' : 'Ocultar descrição da lista'}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                  <line x1="8" y1="6" x2="21" y2="6"/>
-                  <line x1="8" y1="12" x2="21" y2="12"/>
-                  <line x1="8" y1="18" x2="21" y2="18"/>
-                  <line x1="3" y1="6" x2="3.01" y2="6"/>
-                  <line x1="3" y1="12" x2="3.01" y2="12"/>
-                  <line x1="3" y1="18" x2="3.01" y2="18"/>
-                </svg>
-                <span>{listDescHidden ? 'Mostrar descrição' : 'Ocultar descrição'}</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                className={styles.gearBtn}
-                onClick={startEditListDesc}
-                title="Adicionar descrição à lista"
-                aria-label="Adicionar descrição à lista"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                  <line x1="12" y1="5" x2="12" y2="19"/>
-                  <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                <span>Adicionar descrição</span>
-              </button>
-            )}
             <button
               type="button"
               className={styles.gearBtn}
@@ -684,13 +693,23 @@ export default function ListView() {
                                 {(() => {
                                   const s = getStatus(task.status_id)
                                   return s ? (
-                                    <span
-                                      className={styles.titleStatusDot}
+                                    <button
+                                      type="button"
+                                      className={styles.titleStatusBtn}
                                       style={{ background: s.color }}
-                                      title={s.name}
-                                      aria-label={s.name}
+                                      title={`Status: ${s.name} · clique pra alterar`}
+                                      aria-label={`Status: ${s.name}`}
+                                      onClick={e => openStatusPopover(task.id, e)}
                                     />
-                                  ) : null
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className={`${styles.titleStatusBtn} ${styles.titleStatusBtnEmpty}`}
+                                      title="Definir status"
+                                      aria-label="Definir status"
+                                      onClick={e => openStatusPopover(task.id, e)}
+                                    />
+                                  )
                                 })()}
                                 <span className={styles.titleText}>{task.title}</span>
                                 <span className={styles.titleActions} onClick={e => e.stopPropagation()}>
@@ -831,6 +850,22 @@ export default function ListView() {
           onClose={() => setShowPanel(false)}
         />
       )}
+
+      {statusPopover && (() => {
+        const t = tasks.find(x => x.id === statusPopover.taskId)
+        return (
+          <StatusTypePopover
+            anchorRect={statusPopover.rect}
+            statuses={statuses}
+            types={taskTypes}
+            currentStatusId={t?.status_id}
+            currentTypeId={t?.type_id}
+            onPickStatus={pickStatusForTask}
+            onPickType={pickTypeForTask}
+            onClose={closeStatusPopover}
+          />
+        )
+      })()}
     </>
   )
 }

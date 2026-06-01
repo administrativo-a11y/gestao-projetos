@@ -3,6 +3,20 @@
 
 export const RELEASES = [
   {
+    version: '2.4.0',
+    date: '2026-06-01',
+    title: 'Breadcrumb, sidebar cinza-azulada e popover de status/tipo',
+    items: [
+      { type: 'feat', text: 'Topbar agora mostra breadcrumb: Espaço / Pasta / Lista' },
+      { type: 'feat', text: 'Botão de mostrar/ocultar (ou adicionar) descrição movido pro topbar, ao lado do nome da lista' },
+      { type: 'feat', text: 'Click na bolinha do status abre popover com 2 abas: Status e Tipo de tarefa' },
+      { type: 'feat', text: 'Pesquisa dentro do popover para listas grandes' },
+      { type: 'feat', text: 'Tipos de tarefa por espaço — 4 tipos padrão (Tarefa, Marco, Acompanhamento, Caminho crítico)' },
+      { type: 'chore', text: 'Sidebar com tom cinza-azulado (var --color-sidebar)' },
+      { type: 'chore', text: 'Schema v12: tabela `space_task_types` + coluna `tasks.type_id` + trigger pra criar padrões' },
+    ],
+  },
+  {
     version: '2.3.0',
     date: '2026-06-01',
     title: 'Descrição da Lista',
