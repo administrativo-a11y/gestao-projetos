@@ -3,6 +3,27 @@
 
 export const RELEASES = [
   {
+    version: '2.2.0',
+    date: '2026-06-01',
+    title: 'Ações rápidas e criação inline de subtarefa',
+    items: [
+      { type: 'feat', text: 'Coluna "Tarefa" renomeada para "Nome"' },
+      { type: 'feat', text: 'Ao passar o mouse na linha: alça de arrastar, checkbox de concluir, bolinha do status e título em negrito' },
+      { type: 'feat', text: 'Botão + ao lado do título cria subtarefa inline, sem abrir o modal' },
+      { type: 'feat', text: 'Botão ✎ ao lado do título abre o modal de detalhes' },
+    ],
+  },
+  {
+    version: '2.1.0',
+    date: '2026-06-01',
+    title: 'Descrição expansível na Lista',
+    items: [
+      { type: 'feat', text: 'Botão chevron por linha mostra/oculta a descrição da tarefa sem abrir o modal' },
+      { type: 'feat', text: 'Botão "Mostrar descrição" na toolbar expande/recolhe todas de uma vez' },
+      { type: 'feat', text: 'Estado de expansão persistido por lista (localStorage)' },
+    ],
+  },
+  {
     version: '2.0.0',
     date: '2026-05-29',
     title: 'Importação de MS Project e CSV',

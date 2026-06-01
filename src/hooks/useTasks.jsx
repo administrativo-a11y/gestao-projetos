@@ -199,6 +199,23 @@ export function useTasks(listId) {
     return { error }
   }
 
+  // Cria uma subtarefa solta (sem assignee/prazo). Usado pelo inline create da Lista.
+  async function addSubtask(taskId, title) {
+    const task = tasks.find(t => t.id === taskId)
+    if (!task) return { error: new Error('Tarefa não encontrada') }
+    const trimmed = title?.trim()
+    if (!trimmed) return { error: new Error('Título obrigatório') }
+    const maxPos = (task.subtasks ?? []).length
+    const { error } = await supabase.from('subtasks').insert({
+      task_id: taskId,
+      title: trimmed,
+      done: false,
+      position: maxPos,
+    })
+    if (!error) await fetchAll()
+    return { error }
+  }
+
   async function setAssignees(taskId, newUserIds) {
     const task = tasks.find(t => t.id === taskId)
     const current = (task?.task_assignees ?? []).map(a => a.user_id)
@@ -223,7 +240,7 @@ export function useTasks(listId) {
   return {
     statuses, tasks, members, loading,
     createTask, updateTask, moveTask, softDeleteTask, undoDeleteTask,
-    setAssignees, toggleDone, duplicateTask,
+    setAssignees, toggleDone, duplicateTask, addSubtask,
     setFieldValue, clearFieldValue,
     refetch: fetchAll
   }

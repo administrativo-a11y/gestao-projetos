@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { Fragment, useState, useMemo, useEffect, useCallback } from 'react'
 import { useTasks } from '../../hooks/useTasks'
 import { useApp } from '../../hooks/useApp'
 import { useAuth } from '../../hooks/useAuth'
@@ -22,6 +22,7 @@ const STANDARD_KEYS = ['status', 'assignee', 'due_date', 'priority', 'last_comme
 const ORDER_KEY = (listId) => `gp.col_order.${listId}`
 const COLLAPSED_KEY = (listId) => `gp.collapsed_groups.${listId}`
 const HIDDEN_KEY = (listId) => `gp.hidden_cols.${listId}`
+const EXPANDED_DESC_KEY = (listId) => `gp.expanded_desc.${listId}`
 
 const Chevron = ({ open }) => (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"
@@ -38,6 +39,39 @@ const GripIcon = () => (
   </svg>
 )
 
+const RowGripIcon = () => (
+  <svg width="12" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/>
+    <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+    <circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/>
+  </svg>
+)
+
+const RowCheckIcon = ({ done }) => (
+  done ? (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="3.5"/>
+      <polyline points="8 12 11 15 16 9" stroke="var(--color-surface)" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ) : (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+      <rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/>
+    </svg>
+  )
+)
+
+const PlusIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+)
+
+const PencilIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+    <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+  </svg>
+)
+
 function getInitials(n) {
   return n?.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() ?? '?'
 }
@@ -45,7 +79,7 @@ function getInitials(n) {
 export default function ListView() {
   const { activeList, activeSpace } = useApp()
   const { user } = useAuth()
-  const { statuses, tasks, loading, toggleDone, duplicateTask, softDeleteTask } = useTasks(activeList?.id)
+  const { statuses, tasks, loading, toggleDone, duplicateTask, softDeleteTask, addSubtask } = useTasks(activeList?.id)
   const { fields: customFields } = useCustomFields(activeList?.id)
   const { members } = useSpaceMembers(activeSpace?.id)
   const { filters } = useTaskFilters()
@@ -105,6 +139,74 @@ export default function ListView() {
       setHiddenColumns(raw ? new Set(JSON.parse(raw)) : new Set())
     } catch { setHiddenColumns(new Set()) }
   }, [activeList?.id])
+
+  // ── Expanded descriptions ──────────────────────────────────────────
+  const [expandedDesc, setExpandedDesc] = useState(() => new Set())
+  useEffect(() => {
+    if (!activeList?.id) return
+    try {
+      const raw = localStorage.getItem(EXPANDED_DESC_KEY(activeList.id))
+      setExpandedDesc(raw ? new Set(JSON.parse(raw)) : new Set())
+    } catch { setExpandedDesc(new Set()) }
+  }, [activeList?.id])
+
+  function toggleDescription(taskId, e) {
+    if (e) e.stopPropagation()
+    setExpandedDesc(prev => {
+      const next = new Set(prev)
+      if (next.has(taskId)) next.delete(taskId)
+      else next.add(taskId)
+      try { localStorage.setItem(EXPANDED_DESC_KEY(activeList.id), JSON.stringify([...next])) } catch { /* ignore */ }
+      return next
+    })
+  }
+
+  const tasksWithDescription = useMemo(
+    () => filteredTasks.filter(t => (t.description ?? '').trim().length > 0),
+    [filteredTasks]
+  )
+  const allExpanded = tasksWithDescription.length > 0 &&
+    tasksWithDescription.every(t => expandedDesc.has(t.id))
+
+  // ── Inline subtask creation ────────────────────────────────────────
+  const [addingSubtaskFor, setAddingSubtaskFor] = useState(null) // taskId
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
+  const [savingSubtask, setSavingSubtask] = useState(false)
+
+  function openInlineSubtask(taskId, e) {
+    if (e) e.stopPropagation()
+    setAddingSubtaskFor(taskId)
+    setNewSubtaskTitle('')
+  }
+  function cancelInlineSubtask(e) {
+    if (e) { e.preventDefault(); e.stopPropagation() }
+    setAddingSubtaskFor(null)
+    setNewSubtaskTitle('')
+  }
+  async function saveInlineSubtask(e) {
+    if (e) { e.preventDefault(); e.stopPropagation() }
+    const title = newSubtaskTitle.trim()
+    if (!title || !addingSubtaskFor) return
+    setSavingSubtask(true)
+    const { error } = await addSubtask(addingSubtaskFor, title)
+    setSavingSubtask(false)
+    if (!error) {
+      // Garante que a tarefa fica expandida para mostrar a nova subtarefa quando o usuário ver o modal
+      setAddingSubtaskFor(null)
+      setNewSubtaskTitle('')
+    }
+  }
+
+  function toggleAllDescriptions() {
+    if (allExpanded) {
+      setExpandedDesc(new Set())
+      try { localStorage.setItem(EXPANDED_DESC_KEY(activeList.id), JSON.stringify([])) } catch { /* ignore */ }
+    } else {
+      const next = new Set(tasksWithDescription.map(t => t.id))
+      setExpandedDesc(next)
+      try { localStorage.setItem(EXPANDED_DESC_KEY(activeList.id), JSON.stringify([...next])) } catch { /* ignore */ }
+    }
+  }
 
   function toggleColumnVisibility(key) {
     setHiddenColumns(prev => {
@@ -359,6 +461,25 @@ export default function ListView() {
               <option value="priority">Prioridade</option>
               <option value="due_date">Prazo</option>
             </select>
+            {tasksWithDescription.length > 0 && (
+              <button
+                type="button"
+                className={styles.gearBtn}
+                onClick={toggleAllDescriptions}
+                title={allExpanded ? 'Ocultar descrições' : 'Mostrar descrições'}
+                aria-label={allExpanded ? 'Ocultar descrições' : 'Mostrar descrições'}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                  <line x1="8" y1="6" x2="21" y2="6"/>
+                  <line x1="8" y1="12" x2="21" y2="12"/>
+                  <line x1="8" y1="18" x2="21" y2="18"/>
+                  <line x1="3" y1="6" x2="3.01" y2="6"/>
+                  <line x1="3" y1="12" x2="3.01" y2="12"/>
+                  <line x1="3" y1="18" x2="3.01" y2="18"/>
+                </svg>
+                <span>{allExpanded ? 'Ocultar descrição' : 'Mostrar descrição'}</span>
+              </button>
+            )}
             <button
               type="button"
               className={styles.gearBtn}
@@ -399,7 +520,7 @@ export default function ListView() {
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th className={styles.thTitle}>Tarefa</th>
+                      <th className={styles.thTitle}>Nome</th>
                       {orderedColumns.map(col => (
                         <th
                           key={col.key}
@@ -425,33 +546,148 @@ export default function ListView() {
                   <tbody>
                     {group.items.map(task => {
                       const isDone = doneStatusId && task.status_id === doneStatusId
+                      const hasDesc = (task.description ?? '').trim().length > 0
+                      const isExpanded = hasDesc && expandedDesc.has(task.id)
                       return (
-                        <tr
-                          key={task.id}
-                          className={`${styles.row} ${isDone ? styles.rowDone : ''}`}
-                          onClick={() => setSelectedTask(task)}
-                          tabIndex={0}
-                          onKeyDown={e => e.key === 'Enter' && setSelectedTask(task)}
-                        >
-                          <td className={styles.tdTitle}>{task.title}</td>
-                          {orderedColumns.map(col => (
-                            <td key={col.key} className={styles.td}>
-                              {col.cell(task)}
+                        <Fragment key={task.id}>
+                          <tr
+                            className={`${styles.row} ${isDone ? styles.rowDone : ''} ${isExpanded ? styles.rowExpanded : ''}`}
+                            onClick={() => setSelectedTask(task)}
+                            tabIndex={0}
+                            onKeyDown={e => e.key === 'Enter' && setSelectedTask(task)}
+                          >
+                            <td className={styles.tdTitle}>
+                              <span className={styles.titleWrap}>
+                                <span
+                                  className={styles.rowGrip}
+                                  title="Arrastar"
+                                  aria-label="Arrastar"
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  <RowGripIcon />
+                                </span>
+                                <button
+                                  type="button"
+                                  className={`${styles.rowCheck} ${isDone ? styles.rowCheckDone : ''}`}
+                                  onClick={e => { e.stopPropagation(); toggleDone(task.id) }}
+                                  title={isDone ? 'Reabrir' : 'Concluir'}
+                                  aria-label={isDone ? 'Reabrir' : 'Concluir'}
+                                >
+                                  <RowCheckIcon done={isDone} />
+                                </button>
+                                {hasDesc ? (
+                                  <button
+                                    type="button"
+                                    className={styles.descToggle}
+                                    onClick={e => toggleDescription(task.id, e)}
+                                    title={isExpanded ? 'Ocultar descrição' : 'Mostrar descrição'}
+                                    aria-label={isExpanded ? 'Ocultar descrição' : 'Mostrar descrição'}
+                                  >
+                                    <Chevron open={isExpanded} />
+                                  </button>
+                                ) : (
+                                  <span className={styles.descToggleSpacer} aria-hidden="true" />
+                                )}
+                                {(() => {
+                                  const s = getStatus(task.status_id)
+                                  return s ? (
+                                    <span
+                                      className={styles.titleStatusDot}
+                                      style={{ background: s.color }}
+                                      title={s.name}
+                                      aria-label={s.name}
+                                    />
+                                  ) : null
+                                })()}
+                                <span className={styles.titleText}>{task.title}</span>
+                                <span className={styles.titleActions} onClick={e => e.stopPropagation()}>
+                                  <button
+                                    type="button"
+                                    className={styles.titleBtn}
+                                    onClick={e => openInlineSubtask(task.id, e)}
+                                    title="Adicionar subtarefa"
+                                    aria-label="Adicionar subtarefa"
+                                  >
+                                    <PlusIcon />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={styles.titleBtn}
+                                    onClick={e => { e.stopPropagation(); setSelectedTask(task) }}
+                                    title="Abrir"
+                                    aria-label="Abrir"
+                                  >
+                                    <PencilIcon />
+                                  </button>
+                                </span>
+                              </span>
                             </td>
-                          ))}
-                          <td className={styles.tdActions}>
-                            <div className={styles.actionsWrap}>
-                              <TaskQuickActions
-                                task={task}
-                                isDone={isDone}
-                                onToggleDone={t => toggleDone(t.id)}
-                                onDuplicate={t => duplicateTask(t.id)}
-                                onCopyLink={copyTaskLink}
-                                onDelete={t => softDeleteTask(t.id)}
-                              />
-                            </div>
-                          </td>
-                        </tr>
+                            {orderedColumns.map(col => (
+                              <td key={col.key} className={styles.td}>
+                                {col.cell(task)}
+                              </td>
+                            ))}
+                            <td className={styles.tdActions}>
+                              <div className={styles.actionsWrap}>
+                                <TaskQuickActions
+                                  task={task}
+                                  isDone={isDone}
+                                  onToggleDone={t => toggleDone(t.id)}
+                                  onDuplicate={t => duplicateTask(t.id)}
+                                  onCopyLink={copyTaskLink}
+                                  onDelete={t => softDeleteTask(t.id)}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                          {addingSubtaskFor === task.id && (
+                            <tr
+                              className={styles.subtaskFormRow}
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <td colSpan={orderedColumns.length + 2} className={styles.subtaskFormCell}>
+                                <form className={styles.subtaskForm} onSubmit={saveInlineSubtask}>
+                                  <span className={styles.subtaskFormBullet} aria-hidden="true" />
+                                  <input
+                                    autoFocus
+                                    type="text"
+                                    className={styles.subtaskFormInput}
+                                    value={newSubtaskTitle}
+                                    onChange={e => setNewSubtaskTitle(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Escape') cancelInlineSubtask(e) }}
+                                    placeholder="Nome da subtarefa"
+                                    disabled={savingSubtask}
+                                  />
+                                  <button
+                                    type="button"
+                                    className={styles.subtaskFormCancel}
+                                    onClick={cancelInlineSubtask}
+                                    disabled={savingSubtask}
+                                  >
+                                    Cancelar
+                                  </button>
+                                  <button
+                                    type="submit"
+                                    className={styles.subtaskFormSave}
+                                    disabled={savingSubtask || !newSubtaskTitle.trim()}
+                                  >
+                                    {savingSubtask ? 'Salvando...' : 'Salvar'}
+                                  </button>
+                                </form>
+                              </td>
+                            </tr>
+                          )}
+                          {isExpanded && (
+                            <tr
+                              className={styles.descRow}
+                              onClick={() => setSelectedTask(task)}
+                            >
+                              <td colSpan={orderedColumns.length + 2} className={styles.descCell}>
+                                <div className={styles.descBody}>{task.description}</div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
                       )
                     })}
                     {group.items.length === 0 && (
