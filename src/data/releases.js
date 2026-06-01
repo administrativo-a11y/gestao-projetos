@@ -3,6 +3,17 @@
 
 export const RELEASES = [
   {
+    version: '1.8.0',
+    date: '2026-05-29',
+    title: 'Arrastar pastas e listas na sidebar',
+    items: [
+      { type: 'feat', text: 'Reordenar pastas arrastando na sidebar' },
+      { type: 'feat', text: 'Reordenar listas dentro de uma pasta arrastando' },
+      { type: 'feat', text: 'Reordenar listas soltas (sem pasta) arrastando' },
+      { type: 'feat', text: 'Schema v10: coluna position em folders/lists com backfill por data de criação' },
+    ],
+  },
+  {
     version: '1.7.0',
     date: '2026-05-29',
     title: 'Comentários, Anexos e painel de colunas',
