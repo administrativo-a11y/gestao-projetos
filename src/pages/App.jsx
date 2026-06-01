@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import Sidebar from '../components/shared/Sidebar'
 import UndoToast from '../components/shared/UndoToast'
 import SearchModal from '../components/shared/SearchModal'
+import NotificationBell from '../components/shared/NotificationBell'
 import BoardView from '../components/board/BoardView'
 import ListView from '../components/list/ListView'
 import DashboardView from '../components/dashboard/DashboardView'
@@ -195,6 +196,8 @@ export default function AppPage() {
         </button>
 
         <div className={styles.globalSpacer} />
+
+        <NotificationBell />
       </header>
 
       <div className={styles.body}>
