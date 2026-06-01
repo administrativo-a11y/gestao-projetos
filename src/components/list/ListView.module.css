@@ -150,10 +150,165 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  width: 100%;
 }
 
 .titleText {
   display: inline-block;
+  font-weight: 500;
+}
+
+/* drag handle (hover-revealed) */
+.rowGrip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 18px;
+  color: var(--color-text-tertiary);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s;
+  flex-shrink: 0;
+  margin-left: -6px;
+}
+.rowGrip:hover { color: var(--color-text-primary); }
+.row:hover .rowGrip,
+.row:focus-within .rowGrip { opacity: 1; }
+
+/* checkbox de concluir (hover-revealed; visível quando done) */
+.rowCheck {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s;
+}
+.rowCheck:hover { color: var(--color-accent); }
+.rowCheckDone {
+  opacity: 1;
+  color: var(--color-accent);
+}
+.row:hover .rowCheck,
+.row:focus-within .rowCheck { opacity: 1; }
+
+/* status dot junto ao título */
+.titleStatusDot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* botões + e ✎ aparecem no hover ao lado do título */
+.titleActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 8px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.row:hover .titleActions,
+.row:focus-within .titleActions { opacity: 1; }
+
+.titleBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.titleBtn:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text-primary);
+  border-color: var(--color-text-tertiary);
+}
+
+/* form inline de subtarefa */
+.subtaskFormRow {
+  background: var(--color-surface-2);
+}
+.subtaskFormCell {
+  padding: 8px 12px 8px 56px;
+  border-bottom: 0.5px solid var(--color-border);
+}
+.subtaskForm {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.subtaskFormBullet {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+.subtaskFormInput {
+  flex: 1;
+  padding: 6px 10px;
+  border: 0.5px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  outline: none;
+  font-family: var(--font-sans);
+}
+.subtaskFormInput:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light);
+}
+.subtaskFormCancel,
+.subtaskFormSave {
+  padding: 5px 12px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.subtaskFormCancel {
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border-strong);
+  color: var(--color-text-secondary);
+}
+.subtaskFormCancel:hover:not(:disabled) {
+  background: var(--color-surface-2);
+  color: var(--color-text-primary);
+}
+.subtaskFormSave {
+  background: var(--color-accent);
+  border: 0.5px solid var(--color-accent);
+  color: #fff;
+}
+.subtaskFormSave:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+.subtaskFormSave:disabled,
+.subtaskFormCancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .descToggle {
