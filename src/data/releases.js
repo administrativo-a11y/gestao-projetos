@@ -3,6 +3,17 @@
 
 export const RELEASES = [
   {
+    version: '1.6.0',
+    date: '2026-05-29',
+    title: 'Lista mais flexível',
+    items: [
+      { type: 'feat', text: 'Reordenar colunas da Lista arrastando os cabeçalhos (persistido por usuário)' },
+      { type: 'feat', text: 'Agrupar por Responsável (tarefas com múltiplos aparecem em cada grupo)' },
+      { type: 'feat', text: 'Botão "Sem responsável" como grupo separado quando agrupando por pessoa' },
+      { type: 'feat', text: 'Cada grupo agora tem chevron para colapsar/expandir (estado persistido)' },
+    ],
+  },
+  {
     version: '1.5.0',
     date: '2026-05-29',
     title: 'Notificações in-app',
