@@ -9,14 +9,18 @@
   padding: 5px 10px;
   font-size: 12px;
   color: var(--color-text-secondary);
-  background: var(--color-surface-2);
-  border: 0.5px solid var(--color-border);
+  background: transparent;
+  border: 0.5px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   cursor: pointer;
   font-family: var(--font-sans);
-  transition: background 0.12s, color 0.12s;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
-.trigger:hover { color: var(--color-text-primary); background: var(--color-border); }
+.trigger:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-2);
+  border-color: var(--color-text-tertiary);
+}
 
 .count {
   display: inline-flex;
