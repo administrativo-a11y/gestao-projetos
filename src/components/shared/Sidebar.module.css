@@ -109,6 +109,58 @@
 .archivedItem { opacity: 0.55; }
 .archivedItem:hover { opacity: 0.85; }
 
+.versionChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: center;
+  margin: 0 0 10px 0;
+  padding: 3px 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
+  border-radius: 99px;
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s, border-color 0.12s;
+  flex-shrink: 0;
+}
+.versionChip:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-strong);
+}
+
+.versionChipNew {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  background: var(--color-accent-light);
+}
+.versionChipNew:hover {
+  color: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+
+.versionLabel {
+  letter-spacing: 0.02em;
+}
+
+.versionDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  flex-shrink: 0;
+}
+.versionChipNew .versionDot {
+  animation: versionPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes versionPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
 .renameInput {
   flex: 1;
   background: var(--color-surface);

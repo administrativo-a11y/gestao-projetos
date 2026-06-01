@@ -4,8 +4,10 @@ import { useApp } from '../../hooks/useApp'
 import { useTheme } from '../../hooks/useTheme'
 import ProfileModal from './ProfileModal'
 import ContextMenu from './ContextMenu'
+import ReleaseNotesModal from './ReleaseNotesModal'
 import SpaceSettingsModal from '../space/SpaceSettingsModal'
 import FolderPermissionsPanel from '../folder/FolderPermissionsPanel'
+import { CURRENT_VERSION } from '../../data/releases'
 import styles from './Sidebar.module.css'
 
 const COLORS = ['#1D9E75','#378ADD','#EF9F27','#7F77DD','#E24B4A','#D4537E']
@@ -102,8 +104,19 @@ export default function Sidebar() {
   const [showProfile, setShowProfile] = useState(false)
   const [showSpaceSettings, setShowSpaceSettings] = useState(false)
   const [permissionsFolder, setPermissionsFolder] = useState(null)
+  const [showReleases, setShowReleases] = useState(false)
+  const [lastSeenVersion, setLastSeenVersion] = useState(() => {
+    try { return localStorage.getItem('gp.last_seen_version') } catch { return null }
+  })
   // editingId: { kind: 'space'|'folder'|'list', id, draft }
   const [editingId, setEditingId] = useState(null)
+  const hasNewRelease = lastSeenVersion !== CURRENT_VERSION
+
+  function openReleases() {
+    setShowReleases(true)
+    try { localStorage.setItem('gp.last_seen_version', CURRENT_VERSION) } catch { /* ignore */ }
+    setLastSeenVersion(CURRENT_VERSION)
+  }
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState({ name: '', color: COLORS[0], useSpaceStatuses: true, folderId: null })
   const [saving, setSaving] = useState(false)
@@ -475,8 +488,19 @@ export default function Sidebar() {
             </div>
           )}
         </div>
+
+        <button
+          type="button"
+          className={`${styles.versionChip} ${hasNewRelease ? styles.versionChipNew : ''}`}
+          onClick={openReleases}
+          title={hasNewRelease ? 'Há novidades nesta versão' : 'Ver notas de versão'}
+        >
+          <span className={styles.versionLabel}>v{CURRENT_VERSION}</span>
+          {hasNewRelease && <span className={styles.versionDot} aria-hidden="true" />}
+        </button>
       </aside>
 
+      {showReleases && <ReleaseNotesModal onClose={() => setShowReleases(false)} />}
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
       {showSpaceSettings && activeSpace && (
         <SpaceSettingsModal space={activeSpace} onClose={() => setShowSpaceSettings(false)} />
