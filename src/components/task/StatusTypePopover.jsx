@@ -58,6 +58,8 @@ export default function StatusTypePopover({
   const filteredStatuses = statuses.filter(s =>
     s.name.toLowerCase().includes(query.toLowerCase())
   )
+  const openStatuses = filteredStatuses.filter(s => (s.category ?? 'open') === 'open')
+  const closedStatuses = filteredStatuses.filter(s => (s.category ?? 'open') === 'closed')
   const filteredTypes = types.filter(t =>
     t.name.toLowerCase().includes(query.toLowerCase())
   )
@@ -100,22 +102,46 @@ export default function StatusTypePopover({
             <div className={styles.empty}>Nenhum status</div>
           ) : (
             <>
-              <div className={styles.sectionLabel}>Status</div>
-              {filteredStatuses.map(s => {
-                const selected = s.id === currentStatusId
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    className={`${styles.row} ${selected ? styles.rowSelected : ''}`}
-                    onClick={() => { onPickStatus?.(s.id); onClose?.() }}
-                  >
-                    <span className={styles.statusDot} style={{ background: s.color }} />
-                    <span className={styles.rowText}>{s.name}</span>
-                    {selected && <span className={styles.check}>✓</span>}
-                  </button>
-                )
-              })}
+              {openStatuses.length > 0 && (
+                <>
+                  <div className={styles.sectionLabel}>Status</div>
+                  {openStatuses.map(s => {
+                    const selected = s.id === currentStatusId
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        className={`${styles.row} ${selected ? styles.rowSelected : ''}`}
+                        onClick={() => { onPickStatus?.(s.id); onClose?.() }}
+                      >
+                        <span className={styles.statusDot} style={{ background: s.color }} />
+                        <span className={styles.rowText}>{s.name}</span>
+                        {selected && <span className={styles.check}>✓</span>}
+                      </button>
+                    )
+                  })}
+                </>
+              )}
+              {closedStatuses.length > 0 && (
+                <>
+                  <div className={styles.sectionLabel} style={{ marginTop: 8 }}>Fechado</div>
+                  {closedStatuses.map(s => {
+                    const selected = s.id === currentStatusId
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        className={`${styles.row} ${selected ? styles.rowSelected : ''}`}
+                        onClick={() => { onPickStatus?.(s.id); onClose?.() }}
+                      >
+                        <span className={styles.statusDot} style={{ background: s.color }} />
+                        <span className={styles.rowText}>{s.name}</span>
+                        {selected && <span className={styles.check}>✓</span>}
+                      </button>
+                    )
+                  })}
+                </>
+              )}
             </>
           )
         ) : (

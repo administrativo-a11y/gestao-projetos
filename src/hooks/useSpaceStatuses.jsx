@@ -26,14 +26,30 @@ export function useSpaceStatuses(spaceId) {
   ] : [], [spaceId])
   useRealtimeSync(spaceId ? `space-statuses:${spaceId}` : null, subs, refetch)
 
-  async function addStatus({ name, color = '#888780' } = {}) {
+  async function addStatus({ name, color = '#888780', category = 'open' } = {}) {
     setError('')
     const position = statuses.length
     const { error } = await supabase
       .from('space_statuses')
-      .insert({ space_id: spaceId, name: name?.trim() || 'Novo status', color, position })
+      .insert({ space_id: spaceId, name: name?.trim() || 'Novo status', color, position, category })
     if (error) setError(error.message)
     return { error }
+  }
+
+  async function resetToDefaults() {
+    setError('')
+    const { error } = await supabase.rpc('reset_space_statuses', { p_space_id: spaceId })
+    if (error) setError(error.message)
+    else await refetch()
+    return { error }
+  }
+
+  async function cleanupNovoStatus() {
+    setError('')
+    const { data, error } = await supabase.rpc('cleanup_novo_status', { p_space_id: spaceId })
+    if (error) setError(error.message)
+    else await refetch()
+    return { error, deleted: data ?? 0 }
   }
 
   async function updateStatus(id, patch) {
@@ -62,5 +78,5 @@ export function useSpaceStatuses(spaceId) {
     return { error: firstErr ?? null }
   }
 
-  return { statuses, loading, error, addStatus, updateStatus, removeStatus, reorder, refetch }
+  return { statuses, loading, error, addStatus, updateStatus, removeStatus, reorder, resetToDefaults, cleanupNovoStatus, refetch }
 }
