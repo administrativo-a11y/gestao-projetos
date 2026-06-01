@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useTasks } from '../../hooks/useTasks'
 import { useApp } from '../../hooks/useApp'
 import { useAuth } from '../../hooks/useAuth'
 import { useCustomFields } from '../../hooks/useCustomFields'
+import { useSpaceMembers } from '../../hooks/useSpaceMembers'
 import { useTaskFilters, applyFilters } from '../../hooks/useTaskFilters'
 import { useTaskFromQuery, taskShareUrl } from '../../hooks/useTaskFromQuery'
 import CustomFieldDisplay from '../task/CustomFieldDisplay'
@@ -11,16 +12,40 @@ import { ptBR } from 'date-fns/locale'
 import TaskDetailModal from '../board/TaskDetailModal'
 import NewTaskModal from '../board/NewTaskModal'
 import TaskQuickActions from '../task/TaskQuickActions'
+import ListSettingsModal from './ListSettingsModal'
 import styles from './ListView.module.css'
 
 const PRIORITY_LABEL = { high: 'Alta', medium: 'Média', low: 'Baixa' }
 const PRIORITY_CLASS = { high: 'priorityHigh', medium: 'priorityMed', low: 'priorityLow' }
+const STANDARD_KEYS = ['status', 'assignee', 'due_date', 'priority']
+const ORDER_KEY = (listId) => `gp.col_order.${listId}`
+const COLLAPSED_KEY = (listId) => `gp.collapsed_groups.${listId}`
+
+const Chevron = ({ open }) => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"
+    style={{ transform: open ? 'rotate(90deg)' : 'rotate(0)', transition: 'transform 0.15s', flexShrink: 0 }}>
+    <polyline points="9 18 15 12 9 6"/>
+  </svg>
+)
+
+const GripIcon = () => (
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <circle cx="9" cy="6" r="1.4"/><circle cx="15" cy="6" r="1.4"/>
+    <circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/>
+    <circle cx="9" cy="18" r="1.4"/><circle cx="15" cy="18" r="1.4"/>
+  </svg>
+)
+
+function getInitials(n) {
+  return n?.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() ?? '?'
+}
 
 export default function ListView() {
-  const { activeList } = useApp()
+  const { activeList, activeSpace } = useApp()
   const { user } = useAuth()
   const { statuses, tasks, loading, toggleDone, duplicateTask, softDeleteTask } = useTasks(activeList?.id)
   const { fields: customFields } = useCustomFields(activeList?.id)
+  const { members } = useSpaceMembers(activeSpace?.id)
   const { filters } = useTaskFilters()
   const filteredTasks = useMemo(
     () => applyFilters(tasks, statuses, filters, user?.id),
@@ -30,7 +55,85 @@ export default function ListView() {
   const [showNewTask, setShowNewTask] = useState(false)
   const [sortBy, setSortBy] = useState('position')
   const [groupBy, setGroupBy] = useState('none')
+  const [showSettings, setShowSettings] = useState(false)
 
+  // ── Column order (per usuário, por lista) ──────────────────────────
+  const defaultOrder = useMemo(
+    () => [...STANDARD_KEYS, ...customFields.map(f => `cf:${f.id}`)],
+    [customFields]
+  )
+  const [columnOrder, setColumnOrder] = useState(defaultOrder)
+
+  // Carrega/sincroniza com customFields que aparecem/somem
+  useEffect(() => {
+    if (!activeList?.id) return
+    let saved = null
+    try {
+      const raw = localStorage.getItem(ORDER_KEY(activeList.id))
+      if (raw) saved = JSON.parse(raw)
+    } catch { /* ignore */ }
+    const base = Array.isArray(saved) ? saved : defaultOrder
+    const valid = new Set(defaultOrder)
+    const filtered = base.filter(k => valid.has(k))
+    const missing = defaultOrder.filter(k => !filtered.includes(k))
+    setColumnOrder([...filtered, ...missing])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeList?.id, customFields.map(f => f.id).join(',')])
+
+  function persistOrder(order) {
+    try { localStorage.setItem(ORDER_KEY(activeList.id), JSON.stringify(order)) } catch { /* ignore */ }
+  }
+
+  // ── Collapsed groups ───────────────────────────────────────────────
+  const [collapsedGroups, setCollapsedGroups] = useState(() => new Set())
+  useEffect(() => {
+    if (!activeList?.id) return
+    try {
+      const raw = localStorage.getItem(COLLAPSED_KEY(activeList.id))
+      setCollapsedGroups(raw ? new Set(JSON.parse(raw)) : new Set())
+    } catch { setCollapsedGroups(new Set()) }
+  }, [activeList?.id])
+
+  function toggleGroup(key) {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      try { localStorage.setItem(COLLAPSED_KEY(activeList.id), JSON.stringify([...next])) } catch { /* ignore */ }
+      return next
+    })
+  }
+
+  // ── Drag handlers (HTML5 native) ───────────────────────────────────
+  const [draggedKey, setDraggedKey] = useState(null)
+  const [dragOverKey, setDragOverKey] = useState(null)
+
+  function handleDragStart(e, key) {
+    setDraggedKey(key)
+    e.dataTransfer.effectAllowed = 'move'
+    try { e.dataTransfer.setData('text/plain', key) } catch { /* ignore */ }
+  }
+  function handleDragOver(e, key) {
+    e.preventDefault()
+    if (key !== dragOverKey) setDragOverKey(key)
+    e.dataTransfer.dropEffect = 'move'
+  }
+  function handleDrop(e, targetKey) {
+    e.preventDefault()
+    if (!draggedKey || draggedKey === targetKey) { reset(); return }
+    const next = [...columnOrder]
+    const fromIdx = next.indexOf(draggedKey)
+    const toIdx = next.indexOf(targetKey)
+    if (fromIdx === -1 || toIdx === -1) { reset(); return }
+    next.splice(fromIdx, 1)
+    next.splice(toIdx, 0, draggedKey)
+    setColumnOrder(next)
+    persistOrder(next)
+    reset()
+  }
+  function reset() { setDraggedKey(null); setDragOverKey(null) }
+
+  // ── Helpers ────────────────────────────────────────────────────────
   const { clearTaskParam } = useTaskFromQuery(tasks, setSelectedTask, () => setSelectedTask(null))
 
   async function copyTaskLink(task) {
@@ -38,13 +141,13 @@ export default function ListView() {
     try { await navigator.clipboard.writeText(url) }
     catch { window.prompt('Link da tarefa:', url) }
   }
+  function closeTask() { setSelectedTask(null); clearTaskParam() }
 
-  function closeTask() {
-    setSelectedTask(null)
-    clearTaskParam()
-  }
+  function getStatus(statusId) { return statuses.find(s => s.id === statusId) }
+  const doneStatusId = statuses.find(s => /^conclu/i.test(s.name))?.id
 
-  const sorted = [...filteredTasks].sort((a, b) => {
+  // ── Sort ───────────────────────────────────────────────────────────
+  const sorted = useMemo(() => [...filteredTasks].sort((a, b) => {
     if (sortBy === 'priority') {
       const order = { high: 0, medium: 1, low: 2 }
       return order[a.priority] - order[b.priority]
@@ -55,22 +158,131 @@ export default function ListView() {
       return new Date(a.due_date) - new Date(b.due_date)
     }
     return a.position - b.position
-  })
+  }), [filteredTasks, sortBy])
 
-  function getStatus(statusId) {
-    return statuses.find(s => s.id === statusId)
-  }
+  // ── Groups ─────────────────────────────────────────────────────────
+  const groups = useMemo(() => {
+    if (groupBy === 'status') {
+      return statuses.map(s => ({
+        key: `status:${s.id}`,
+        header: { dot: s.color, label: s.name },
+        items: sorted.filter(t => t.status_id === s.id),
+      }))
+    }
+    if (groupBy === 'assignee') {
+      // Coleta IDs de assignees presentes nos tasks visíveis
+      const seenIds = new Set()
+      for (const t of sorted) {
+        for (const a of (t.task_assignees ?? [])) seenIds.add(a.user_id)
+      }
+      const groupsArr = []
+      // Membros do espaço primeiro (ordem dos membros)
+      for (const m of members) {
+        if (!seenIds.has(m.user_id)) continue
+        const items = sorted.filter(t =>
+          (t.task_assignees ?? []).some(a => a.user_id === m.user_id)
+        )
+        groupsArr.push({
+          key: `assignee:${m.user_id}`,
+          header: {
+            avatar: m.profiles?.avatar_url
+              ? <img src={m.profiles.avatar_url} alt="" className={styles.groupAvatar} />
+              : <span className={styles.groupAvatar}>{getInitials(m.profiles?.name)}</span>,
+            label: m.profiles?.name ?? '?',
+          },
+          items,
+        })
+      }
+      // Sem responsável (tarefas sem nenhum assignee)
+      const unassigned = sorted.filter(t => !t.task_assignees || t.task_assignees.length === 0)
+      if (unassigned.length > 0) {
+        groupsArr.push({
+          key: 'assignee:none',
+          header: { dot: 'var(--color-text-tertiary)', label: 'Sem responsável' },
+          items: unassigned,
+        })
+      }
+      return groupsArr
+    }
+    return [{ key: null, header: null, items: sorted }]
+  }, [groupBy, statuses, members, sorted])
 
-  const doneStatusId = statuses.find(s => /conclu/i.test(s.name))?.id
+  // ── Column definitions ─────────────────────────────────────────────
+  const allColumns = useMemo(() => {
+    const map = {
+      status: {
+        key: 'status', header: 'Status',
+        cell: (task) => {
+          const s = getStatus(task.status_id)
+          return s ? (
+            <span className={styles.statusPill} style={{ background: s.color + '22', color: s.color }}>
+              {s.name}
+            </span>
+          ) : null
+        },
+      },
+      assignee: {
+        key: 'assignee', header: 'Responsável',
+        cell: (task) => (
+          <div className={styles.assignees}>
+            {task.task_assignees?.map(a => (
+              <span key={a.user_id} className={styles.avatar} title={a.profiles?.name}>
+                {a.profiles?.name?.[0]?.toUpperCase() ?? '?'}
+              </span>
+            ))}
+            {(!task.task_assignees || task.task_assignees.length === 0) && (
+              <span className={styles.none}>—</span>
+            )}
+          </div>
+        ),
+      },
+      due_date: {
+        key: 'due_date', header: 'Prazo',
+        cell: (task) => (
+          task.due_date ? (
+            <span className={`${styles.dueDate} ${
+              isPast(new Date(task.due_date)) && task.status_id !== doneStatusId
+                ? styles.overdue
+                : isToday(new Date(task.due_date))
+                ? styles.today
+                : ''
+            }`}>
+              {format(new Date(task.due_date), 'dd MMM', { locale: ptBR })}
+            </span>
+          ) : <span className={styles.none}>—</span>
+        ),
+      },
+      priority: {
+        key: 'priority', header: 'Prioridade',
+        cell: (task) => (
+          <span className={styles[PRIORITY_CLASS[task.priority]]}>
+            {PRIORITY_LABEL[task.priority]}
+          </span>
+        ),
+      },
+    }
+    customFields.forEach(f => {
+      map[`cf:${f.id}`] = {
+        key: `cf:${f.id}`,
+        header: f.name,
+        cell: (task) => {
+          const fv = (task.task_field_values ?? []).find(v => v.field_id === f.id)
+          return <CustomFieldDisplay field={f} value={fv?.value} />
+        },
+      }
+    })
+    return map
+  }, [customFields, statuses, doneStatusId])
+
+  const orderedColumns = useMemo(
+    () => columnOrder.map(k => allColumns[k]).filter(Boolean),
+    [columnOrder, allColumns]
+  )
 
   if (!activeList) return null
   if (loading) return <div className={styles.loading}>Carregando...</div>
 
-  // Agrupado por status
-  const groups = groupBy === 'status'
-    ? statuses.map(s => ({ status: s, items: sorted.filter(t => t.status_id === s.id) }))
-    : [{ status: null, items: sorted }]
-
+  // ── Render ─────────────────────────────────────────────────────────
   return (
     <>
       <div className={styles.wrapper}>
@@ -83,6 +295,7 @@ export default function ListView() {
             <select className={styles.sortSelect} value={groupBy} onChange={e => setGroupBy(e.target.value)}>
               <option value="none">Sem agrupamento</option>
               <option value="status">Status</option>
+              <option value="assignee">Responsável</option>
             </select>
             <span className={styles.sortLabel}>Ordenar</span>
             <select className={styles.sortSelect} value={sortBy} onChange={e => setSortBy(e.target.value)}>
@@ -90,112 +303,113 @@ export default function ListView() {
               <option value="priority">Prioridade</option>
               <option value="due_date">Prazo</option>
             </select>
+            <button
+              type="button"
+              className={styles.gearBtn}
+              onClick={() => setShowSettings(true)}
+              title="Configurações da lista"
+              aria-label="Configurações da lista"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+              <span>Campos</span>
+            </button>
           </div>
         </div>
 
-        {groups.map((group, gi) => (
-          <div key={group.status?.id ?? `g${gi}`} className={styles.group}>
-            {group.status && (
-              <div className={styles.groupHeader}>
-                <span className={styles.groupDot} style={{ background: group.status.color }} />
-                <span className={styles.groupName}>{group.status.name}</span>
-                <span className={styles.groupCount}>{group.items.length}</span>
-              </div>
-            )}
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th className={styles.thTitle}>Tarefa</th>
-                  <th className={styles.th}>Status</th>
-                  <th className={styles.th}>Responsável</th>
-                  <th className={styles.th}>Prazo</th>
-                  <th className={styles.th}>Prioridade</th>
-                  {customFields.map(f => (
-                    <th key={f.id} className={styles.th}>{f.name}</th>
-                  ))}
-                  <th className={styles.thActions} aria-label="Ações" />
-                </tr>
-              </thead>
-              <tbody>
-                {group.items.map(task => {
-                  const status = getStatus(task.status_id)
-                  const isDone = doneStatusId && task.status_id === doneStatusId
-                  return (
-                    <tr
-                      key={task.id}
-                      className={`${styles.row} ${isDone ? styles.rowDone : ''}`}
-                      onClick={() => setSelectedTask(task)}
-                      tabIndex={0}
-                      onKeyDown={e => e.key === 'Enter' && setSelectedTask(task)}
-                    >
-                      <td className={styles.tdTitle}>{task.title}</td>
-                      <td className={styles.td}>
-                        {status && (
-                          <span
-                            className={styles.statusPill}
-                            style={{ background: status.color + '22', color: status.color }}
-                          >
-                            {status.name}
+        {groups.map(group => {
+          const isCollapsed = group.key && collapsedGroups.has(group.key)
+          return (
+            <div key={group.key ?? 'all'} className={styles.group}>
+              {group.header && (
+                <button
+                  type="button"
+                  className={styles.groupHeader}
+                  onClick={() => toggleGroup(group.key)}
+                >
+                  <Chevron open={!isCollapsed} />
+                  {group.header.dot && (
+                    <span className={styles.groupDot} style={{ background: group.header.dot }} />
+                  )}
+                  {group.header.avatar}
+                  <span className={styles.groupName}>{group.header.label}</span>
+                  <span className={styles.groupCount}>{group.items.length}</span>
+                </button>
+              )}
+              {!isCollapsed && (
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th className={styles.thTitle}>Tarefa</th>
+                      {orderedColumns.map(col => (
+                        <th
+                          key={col.key}
+                          className={`${styles.th} ${styles.thDraggable} ${dragOverKey === col.key ? styles.thDragOver : ''} ${draggedKey === col.key ? styles.thDragging : ''}`}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, col.key)}
+                          onDragOver={(e) => handleDragOver(e, col.key)}
+                          onDragEnter={(e) => handleDragOver(e, col.key)}
+                          onDragLeave={() => setDragOverKey(k => k === col.key ? null : k)}
+                          onDrop={(e) => handleDrop(e, col.key)}
+                          onDragEnd={reset}
+                          title="Arraste para reordenar"
+                        >
+                          <span className={styles.thInner}>
+                            <span className={styles.grip}><GripIcon /></span>
+                            {col.header}
                           </span>
-                        )}
-                      </td>
-                      <td className={styles.td}>
-                        <div className={styles.assignees}>
-                          {task.task_assignees?.map(a => (
-                            <span key={a.user_id} className={styles.avatar} title={a.profiles?.name}>
-                              {a.profiles?.name?.[0]?.toUpperCase() ?? '?'}
-                            </span>
-                          ))}
-                          {(!task.task_assignees || task.task_assignees.length === 0) && (
-                            <span className={styles.none}>—</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className={styles.td}>
-                        {task.due_date ? (
-                          <span className={`${styles.dueDate} ${
-                            isPast(new Date(task.due_date)) && task.status_id !== doneStatusId
-                              ? styles.overdue
-                              : isToday(new Date(task.due_date))
-                              ? styles.today
-                              : ''
-                          }`}>
-                            {format(new Date(task.due_date), 'dd MMM', { locale: ptBR })}
-                          </span>
-                        ) : <span className={styles.none}>—</span>}
-                      </td>
-                      <td className={styles.td}>
-                        <span className={styles[PRIORITY_CLASS[task.priority]]}>
-                          {PRIORITY_LABEL[task.priority]}
-                        </span>
-                      </td>
-                      {customFields.map(f => {
-                        const fv = (task.task_field_values ?? []).find(v => v.field_id === f.id)
-                        return (
-                          <td key={f.id} className={styles.td}>
-                            <CustomFieldDisplay field={f} value={fv?.value} />
-                          </td>
-                        )
-                      })}
-                      <td className={styles.tdActions}>
-                        <div className={styles.actionsWrap}>
-                          <TaskQuickActions
-                            task={task}
-                            isDone={isDone}
-                            onToggleDone={t => toggleDone(t.id)}
-                            onDuplicate={t => duplicateTask(t.id)}
-                            onCopyLink={copyTaskLink}
-                            onDelete={t => softDeleteTask(t.id)}
-                          />
-                        </div>
-                      </td>
+                        </th>
+                      ))}
+                      <th className={styles.thActions} aria-label="Ações" />
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        ))}
+                  </thead>
+                  <tbody>
+                    {group.items.map(task => {
+                      const isDone = doneStatusId && task.status_id === doneStatusId
+                      return (
+                        <tr
+                          key={task.id}
+                          className={`${styles.row} ${isDone ? styles.rowDone : ''}`}
+                          onClick={() => setSelectedTask(task)}
+                          tabIndex={0}
+                          onKeyDown={e => e.key === 'Enter' && setSelectedTask(task)}
+                        >
+                          <td className={styles.tdTitle}>{task.title}</td>
+                          {orderedColumns.map(col => (
+                            <td key={col.key} className={styles.td}>
+                              {col.cell(task)}
+                            </td>
+                          ))}
+                          <td className={styles.tdActions}>
+                            <div className={styles.actionsWrap}>
+                              <TaskQuickActions
+                                task={task}
+                                isDone={isDone}
+                                onToggleDone={t => toggleDone(t.id)}
+                                onDuplicate={t => duplicateTask(t.id)}
+                                onCopyLink={copyTaskLink}
+                                onDelete={t => softDeleteTask(t.id)}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    {group.items.length === 0 && (
+                      <tr>
+                        <td colSpan={orderedColumns.length + 2} className={styles.emptyRow}>
+                          Sem tarefas neste grupo
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )
+        })}
 
         <button className={styles.addRow} onClick={() => setShowNewTask(true)}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -220,6 +434,10 @@ export default function ListView() {
           listId={activeList.id}
           onClose={() => setShowNewTask(false)}
         />
+      )}
+
+      {showSettings && (
+        <ListSettingsModal list={activeList} onClose={() => setShowSettings(false)} />
       )}
     </>
   )

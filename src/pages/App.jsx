@@ -10,7 +10,6 @@ import DashboardView from '../components/dashboard/DashboardView'
 import GanttView from '../components/gantt/GanttView'
 import FilterBar from '../components/filters/FilterBar'
 import SavedViewsMenu from '../components/filters/SavedViewsMenu'
-import ListSettingsModal from '../components/list/ListSettingsModal'
 import { useApp } from '../hooks/useApp'
 import styles from './App.module.css'
 
@@ -68,7 +67,6 @@ export default function AppPage() {
   const [draftListName, setDraftListName] = useState('')
   const [activeView, setActiveViewState] = useState('board')
   const [searchOpen, setSearchOpen] = useState(false)
-  const [listSettingsOpen, setListSettingsOpen] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(loadSidebarWidth)
   const [sidebarCollapsed, setSidebarCollapsedState] = useState(loadSidebarCollapsed)
 
@@ -250,17 +248,6 @@ export default function AppPage() {
                       {activeList.name}
                     </span>
                   )}
-                  <button
-                    className={styles.listGearBtn}
-                    onClick={() => setListSettingsOpen(true)}
-                    title="Configurações da lista"
-                    aria-label="Configurações da lista"
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                      <circle cx="12" cy="12" r="3"/>
-                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                    </svg>
-                  </button>
                 </div>
                 <nav className={styles.tabs}>
                   {VIEWS.map(v => (
@@ -304,9 +291,6 @@ export default function AppPage() {
       </div>
 
       {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} />}
-      {listSettingsOpen && activeList && (
-        <ListSettingsModal list={activeList} onClose={() => setListSettingsOpen(false)} />
-      )}
       <UndoToast />
     </div>
   )
