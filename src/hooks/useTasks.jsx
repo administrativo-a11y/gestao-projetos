@@ -20,7 +20,9 @@ export function useTasks(listId) {
         task_assignees(user_id, profiles(id, name, avatar_url)),
         task_tags(tag_id, tags(id, name, color)),
         subtasks(id, done, title, assignee_id, due_date, description, position),
-        task_field_values(field_id, value)
+        task_field_values(field_id, value),
+        comments(id, content, created_at, user_id, profiles(name, avatar_url)),
+        task_attachments(id, file_name)
       `).eq('list_id', listId).is('deleted_at', null).order('position'),
     ])
     setStatuses(statusRes.data ?? [])
