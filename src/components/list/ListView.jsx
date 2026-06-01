@@ -11,6 +11,7 @@ import { ptBR } from 'date-fns/locale'
 import TaskDetailModal from '../board/TaskDetailModal'
 import NewTaskModal from '../board/NewTaskModal'
 import TaskQuickActions from '../task/TaskQuickActions'
+import ListSettingsModal from './ListSettingsModal'
 import styles from './ListView.module.css'
 
 const PRIORITY_LABEL = { high: 'Alta', medium: 'Média', low: 'Baixa' }
@@ -30,6 +31,7 @@ export default function ListView() {
   const [showNewTask, setShowNewTask] = useState(false)
   const [sortBy, setSortBy] = useState('position')
   const [groupBy, setGroupBy] = useState('none')
+  const [showSettings, setShowSettings] = useState(false)
 
   const { clearTaskParam } = useTaskFromQuery(tasks, setSelectedTask, () => setSelectedTask(null))
 
@@ -90,6 +92,19 @@ export default function ListView() {
               <option value="priority">Prioridade</option>
               <option value="due_date">Prazo</option>
             </select>
+            <button
+              type="button"
+              className={styles.gearBtn}
+              onClick={() => setShowSettings(true)}
+              title="Configurações da lista (campos personalizados, etc)"
+              aria-label="Configurações da lista"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+              <span>Campos</span>
+            </button>
           </div>
         </div>
 
@@ -220,6 +235,10 @@ export default function ListView() {
           listId={activeList.id}
           onClose={() => setShowNewTask(false)}
         />
+      )}
+
+      {showSettings && (
+        <ListSettingsModal list={activeList} onClose={() => setShowSettings(false)} />
       )}
     </>
   )
