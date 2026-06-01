@@ -3,6 +3,16 @@
 
 export const RELEASES = [
   {
+    version: '2.1.0',
+    date: '2026-06-01',
+    title: 'Descrição expansível na Lista',
+    items: [
+      { type: 'feat', text: 'Botão chevron por linha mostra/oculta a descrição da tarefa sem abrir o modal' },
+      { type: 'feat', text: 'Botão "Mostrar descrição" na toolbar expande/recolhe todas de uma vez' },
+      { type: 'feat', text: 'Estado de expansão persistido por lista (localStorage)' },
+    ],
+  },
+  {
     version: '2.0.0',
     date: '2026-05-29',
     title: 'Importação de MS Project e CSV',
