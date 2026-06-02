@@ -32,7 +32,7 @@ export function AppProvider({ children }) {
   // ── FETCH ──────────────────────────────────────────────────
 
   const fetchSpaces = useCallback(async () => {
-    if (!user) return
+    if (!user?.id) return
     const { data } = await supabase
       .from('spaces')
       .select('*, space_statuses(*)')
@@ -40,7 +40,7 @@ export function AppProvider({ children }) {
       .order('created_at')
     setSpaces(data ?? [])
     setLoading(false)
-  }, [user])
+  }, [user?.id])
 
   const fetchFoldersAndLists = useCallback(async (spaceId) => {
     const [foldersRes, listsRes] = await Promise.all([
@@ -60,16 +60,17 @@ export function AppProvider({ children }) {
   useEffect(() => { fetchSpaces() }, [fetchSpaces])
 
   useEffect(() => {
-    if (activeSpace) fetchFoldersAndLists(activeSpace.id)
+    if (activeSpace?.id) fetchFoldersAndLists(activeSpace.id)
     else { setFolders([]); setLists([]) }
-  }, [activeSpace, fetchFoldersAndLists])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSpace?.id])
 
   // Realtime: espaços (sempre que mudam) + folders/lists do espaço ativo
-  const spacesSubs = useMemo(() => user ? [
+  const spacesSubs = useMemo(() => user?.id ? [
     { table: 'spaces' },
     { table: 'space_members' },
-  ] : [], [user])
-  useRealtimeSync(user ? `spaces:${user.id}` : null, spacesSubs, fetchSpaces)
+  ] : [], [user?.id])
+  useRealtimeSync(user?.id ? `spaces:${user.id}` : null, spacesSubs, fetchSpaces)
 
   const treeSubs = useMemo(() => activeSpace ? [
     { table: 'folders', filter: `space_id=eq.${activeSpace.id}` },

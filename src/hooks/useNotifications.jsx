@@ -10,7 +10,7 @@ export function useNotifications() {
   const [error, setError] = useState('')
 
   const refetch = useCallback(async () => {
-    if (!user) return
+    if (!user?.id) return
     setLoading(true)
     const { data, error: err } = await supabase
       .from('notifications')
@@ -25,14 +25,14 @@ export function useNotifications() {
     if (err) setError(err.message)
     setNotifications(data ?? [])
     setLoading(false)
-  }, [user])
+  }, [user?.id])
 
   useEffect(() => { refetch() }, [refetch])
 
-  const subs = useMemo(() => user ? [
+  const subs = useMemo(() => user?.id ? [
     { table: 'notifications', filter: `user_id=eq.${user.id}` },
   ] : [], [user?.id])
-  useRealtimeSync(user ? `notifications:${user.id}` : null, subs, refetch)
+  useRealtimeSync(user?.id ? `notifications:${user.id}` : null, subs, refetch)
 
   const unreadCount = useMemo(
     () => notifications.filter(n => !n.read_at).length,
@@ -53,7 +53,7 @@ export function useNotifications() {
   }
 
   async function markAllAsRead() {
-    if (!user || unreadCount === 0) return
+    if (!user?.id || unreadCount === 0) return
     const now = new Date().toISOString()
     setNotifications(prev => prev.map(n => n.read_at ? n : { ...n, read_at: now }))
     const { error } = await supabase

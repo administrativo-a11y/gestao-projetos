@@ -9,7 +9,7 @@ export function useSavedViews(listId) {
   const [loading, setLoading] = useState(true)
 
   const refetch = useCallback(async () => {
-    if (!listId || !user) return
+    if (!listId || !user?.id) return
     setLoading(true)
     const { data } = await supabase
       .from('saved_views')
@@ -19,15 +19,15 @@ export function useSavedViews(listId) {
       .order('updated_at', { ascending: false })
     setViews(data ?? [])
     setLoading(false)
-  }, [listId, user])
+  }, [listId, user?.id])
 
   useEffect(() => { refetch() }, [refetch])
 
-  const subs = useMemo(() => (listId && user) ? [
+  const subs = useMemo(() => (listId && user?.id) ? [
     { table: 'saved_views', filter: `list_id=eq.${listId}` },
   ] : [], [listId, user?.id])
   useRealtimeSync(
-    (listId && user) ? `saved-views:${listId}:${user.id}` : null,
+    (listId && user?.id) ? `saved-views:${listId}:${user.id}` : null,
     subs,
     refetch
   )

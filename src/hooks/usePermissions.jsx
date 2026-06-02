@@ -25,7 +25,7 @@ export function usePermissions() {
   const [loading, setLoading] = useState(true)
 
   const fetchAll = useCallback(async () => {
-    if (!user || !activeSpace) {
+    if (!user?.id || !activeSpace?.id) {
       setSpaceMembership(null)
       setFolderRules([])
       setLoading(false)
@@ -47,7 +47,7 @@ export function usePermissions() {
     setSpaceMembership(memberRes.data ?? null)
     setFolderRules(rulesRes.data ?? [])
     setLoading(false)
-  }, [user, activeSpace])
+  }, [user?.id, activeSpace?.id])
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
