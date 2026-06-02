@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Sidebar from '../components/shared/Sidebar'
+import NavRail from '../components/shared/NavRail'
 import UndoToast from '../components/shared/UndoToast'
 import SearchModal from '../components/shared/SearchModal'
 import NotificationBell from '../components/shared/NotificationBell'
+import SpaceSettingsModal from '../components/space/SpaceSettingsModal'
 import BoardView from '../components/board/BoardView'
 import ListView from '../components/list/ListView'
 import DashboardView from '../components/dashboard/DashboardView'
@@ -113,6 +115,7 @@ export default function AppPage() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(loadSidebarWidth)
   const [sidebarCollapsed, setSidebarCollapsedState] = useState(loadSidebarCollapsed)
+  const [showSpaceSettings, setShowSpaceSettings] = useState(false)
 
   function setSidebarCollapsed(v) {
     setSidebarCollapsedState(v)
@@ -243,6 +246,9 @@ export default function AppPage() {
       </header>
 
       <div className={styles.body}>
+        <NavRail
+          onOpenInvite={() => activeSpace && setShowSpaceSettings(true)}
+        />
         <div
           className={`${styles.sidebarWrap} ${sidebarCollapsed ? styles.collapsed : ''}`}
           style={{ width: sidebarCollapsed ? 0 : sidebarWidth }}
@@ -269,17 +275,28 @@ export default function AppPage() {
                   <nav className={styles.breadcrumb} aria-label="Caminho">
                     {activeSpace && (
                       <>
-                        <span className={styles.crumb} title={activeSpace.name}>
-                          {activeSpace.icon && <span className={styles.crumbIcon}>{activeSpace.icon}</span>}
+                        <button
+                          type="button"
+                          className={`${styles.crumb} ${styles.crumbClickable}`}
+                          title={`Ir para ${activeSpace.name}`}
+                          onClick={() => navigate(`/space/${activeSpace.id}`)}
+                        >
+                          <span
+                            className={styles.crumbSpaceIcon}
+                            style={{ background: activeSpace.color || 'var(--color-accent)' }}
+                            aria-hidden="true"
+                          >
+                            {(activeSpace.name?.[0] ?? 'S').toUpperCase()}
+                          </span>
                           <span className={styles.crumbText}>{activeSpace.name}</span>
-                        </span>
+                        </button>
                         <span className={styles.crumbSep} aria-hidden="true">/</span>
                       </>
                     )}
                     {activeFolder && (
                       <>
                         <span className={styles.crumb} title={activeFolder.name}>
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" className={styles.crumbIconSvg}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={styles.crumbIconSvg}>
                             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
                           </svg>
                           <span className={styles.crumbText}>{activeFolder.name}</span>
@@ -391,6 +408,9 @@ export default function AppPage() {
       </div>
 
       {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} />}
+      {showSpaceSettings && activeSpace && (
+        <SpaceSettingsModal space={activeSpace} onClose={() => setShowSpaceSettings(false)} />
+      )}
       <UndoToast />
     </div>
   )

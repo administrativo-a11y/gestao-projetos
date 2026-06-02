@@ -1,0 +1,64 @@
+.rail {
+  width: 64px;
+  height: 100%;
+  background: var(--color-accent);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 8px 0;
+  gap: 2px;
+  flex-shrink: 0;
+  border-right: 0.5px solid rgba(0,0,0,0.08);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: rgba(255,255,255,0.9);
+  font-family: var(--font-sans);
+  transition: background 0.12s, color 0.12s;
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+}
+.item:hover:not(:disabled) {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+}
+.item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+.label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spacer { flex: 1; }
+
+.itemAccent {
+  background: rgba(255,255,255,0.16);
+}
+.itemAccent:hover:not(:disabled) {
+  background: rgba(255,255,255,0.26);
+}
