@@ -1,7 +1,16 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
-import { normalizePriority, normalizeDate } from '../lib/importMappingDetect'
+import { normalizePriority, normalizeDate, parseAssigneeNames } from '../lib/importMappingDetect'
+
+function normalizeName(s) {
+  return (s ?? '')
+    .toString()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim()
+}
 
 /**
  * Hook que executa a importação em lote.
@@ -67,15 +76,21 @@ async function runImport(
     if (error) throw new Error('Não foi possível criar a lista: ' + error.message)
     listId = created.id
 
-    // Copia os status do espaço (igual ao fluxo normal de criação)
+    // Copia os status do espaço (igual ao fluxo normal de criação, incluindo category)
     const { data: spaceStatuses } = await supabase
       .from('space_statuses')
-      .select('*')
+      .select('name, color, position, category')
       .eq('space_id', spaceId)
       .order('position')
     if (spaceStatuses?.length > 0) {
       await supabase.from('list_statuses').insert(
-        spaceStatuses.map(s => ({ list_id: listId, name: s.name, color: s.color, position: s.position }))
+        spaceStatuses.map(s => ({
+          list_id: listId,
+          name: s.name,
+          color: s.color,
+          position: s.position,
+          category: s.category ?? 'open',
+        }))
       )
     }
   }
@@ -87,15 +102,18 @@ async function runImport(
   const doneStatus = listStatuses?.find(s => /^conclu/i.test(s.name))
   const doneStatusId = doneStatus?.id ?? defaultStatusId
 
-  // 3) Carrega membros do espaço (pra resolver responsáveis por email)
+  // 3) Carrega membros do espaço (pra resolver responsáveis por email ou nome)
   const { data: members } = await supabase
     .from('space_members')
-    .select('user_id, profiles(email)')
+    .select('user_id, profiles(email, name)')
     .eq('space_id', spaceId)
   const emailToUserId = new Map()
+  const nameToUserId = new Map() // chave: nome normalizado (lowercase, sem acentos)
   for (const m of (members ?? [])) {
     const email = m.profiles?.email?.toLowerCase()
     if (email) emailToUserId.set(email, m.user_id)
+    const nameKey = normalizeName(m.profiles?.name)
+    if (nameKey) nameToUserId.set(nameKey, m.user_id)
   }
 
   // 4) Cria custom fields (CSV) se necessário
@@ -162,7 +180,9 @@ async function runImport(
     let pos = 0
     for (const row of source.rows) {
       let title = null, description = null, due_date = null, start_date = null
-      let priority = 'medium', statusName = null, assignee_email = null, tagsStr = null
+      let priority = 'medium', statusName = null, tagsStr = null
+      const assignee_emails = []   // pra lookup por email
+      const assignee_names = []    // pra lookup por nome (ClickUp manda "[Nome]")
       const fieldValues = []
       for (const [header, value] of Object.entries(row)) {
         if (!value || value.trim() === '') continue
@@ -175,7 +195,8 @@ async function runImport(
           case 'start_date': start_date = normalizeDate(value); break
           case 'priority': priority = normalizePriority(value) ?? 'medium'; break
           case 'status': statusName = value.trim(); break
-          case 'assignee_email': assignee_email = value.trim().toLowerCase(); break
+          case 'assignee_email': assignee_emails.push(value.trim().toLowerCase()); break
+          case 'assignee_name': assignee_names.push(...parseAssigneeNames(value)); break
           case 'tag': tagsStr = value; break
           case 'custom_field': {
             const field = customFieldByHeader.get(header)
@@ -185,6 +206,7 @@ async function runImport(
             }
             break
           }
+          case '__ignore__':
           default: break
         }
       }
@@ -210,7 +232,8 @@ async function runImport(
           created_by: user?.id,
         },
         externalUID: null,
-        assignee_emails: assignee_email ? [assignee_email] : [],
+        assignee_emails,
+        assignee_names,
         subtasks: [],
         field_values: fieldValues,
       })
@@ -266,16 +289,36 @@ async function runImport(
     if (subErr) errors.push('Falha ao criar subtarefas: ' + subErr.message)
   }
 
-  // 8) Assignees
+  // 8) Assignees — lookup por email E por nome
   const assigneeRows = []
+  const assigneeSeen = new Set() // chave: `${taskId}:${userId}` pra deduplicar
   const unmatchedEmails = new Set()
+  const unmatchedNames = new Set()
   for (const { row, newId } of newTaskById) {
-    for (const email of row.assignee_emails) {
+    // Por email
+    for (const email of (row.assignee_emails ?? [])) {
       const uid = emailToUserId.get(email.toLowerCase())
       if (uid) {
-        assigneeRows.push({ task_id: newId, user_id: uid })
+        const key = `${newId}:${uid}`
+        if (!assigneeSeen.has(key)) {
+          assigneeRows.push({ task_id: newId, user_id: uid })
+          assigneeSeen.add(key)
+        }
       } else {
         unmatchedEmails.add(email)
+      }
+    }
+    // Por nome (ClickUp manda "[Renato Alencar]")
+    for (const name of (row.assignee_names ?? [])) {
+      const uid = nameToUserId.get(normalizeName(name))
+      if (uid) {
+        const key = `${newId}:${uid}`
+        if (!assigneeSeen.has(key)) {
+          assigneeRows.push({ task_id: newId, user_id: uid })
+          assigneeSeen.add(key)
+        }
+      } else {
+        unmatchedNames.add(name)
       }
     }
   }
@@ -287,6 +330,9 @@ async function runImport(
   }
   if (unmatchedEmails.size > 0) {
     errors.push(`E-mails sem match nos membros do espaço (ignorados): ${[...unmatchedEmails].join(', ')}`)
+  }
+  if (unmatchedNames.size > 0) {
+    errors.push(`Nomes sem match nos membros do espaço (ignorados): ${[...unmatchedNames].join(', ')}`)
   }
 
   // 9) Custom field values (CSV)

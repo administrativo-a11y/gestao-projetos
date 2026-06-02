@@ -16,6 +16,7 @@ const FIELD_DESTS = [
   { id: 'priority', label: 'Prioridade' },
   { id: 'status', label: 'Status (por nome)' },
   { id: 'assignee_email', label: 'Responsável (e-mail)' },
+  { id: 'assignee_name', label: 'Responsável (nome)' },
   { id: 'tag', label: 'Tag' },
   { id: 'custom_field', label: 'Campo personalizado' },
   { id: '__ignore__', label: 'Ignorar' },
@@ -30,7 +31,10 @@ const CF_TYPES = [
   { id: 'phone', label: 'Telefone' },
 ]
 
-export default function ImportModal({ space, onClose }) {
+export default function ImportModal({ space, onClose, initialTarget }) {
+  // initialTarget pode ser:
+  //   { type: 'folder', folderId }  → pré-seleciona "nova lista nesta pasta"
+  //   { type: 'list', listId }      → pré-seleciona "adicionar a esta lista"
   const { lists, folders } = useApp()
   const navigate = useNavigate()
   const { doImport, importing, progress, lastResult } = useImport()
@@ -42,11 +46,17 @@ export default function ImportModal({ space, onClose }) {
   const [parseError, setParseError] = useState('')
   const [dragOver, setDragOver] = useState(false)
 
-  // Step 2
-  const [destination, setDestination] = useState('new') // 'new' | 'existing'
+  // Step 2 — defaults baseados em initialTarget
+  const [destination, setDestination] = useState(
+    initialTarget?.type === 'list' ? 'existing' : 'new'
+  )
   const [listName, setListName] = useState('')
-  const [targetListId, setTargetListId] = useState('')
-  const [targetFolderId, setTargetFolderId] = useState('')
+  const [targetListId, setTargetListId] = useState(
+    initialTarget?.type === 'list' ? initialTarget.listId : ''
+  )
+  const [targetFolderId, setTargetFolderId] = useState(
+    initialTarget?.type === 'folder' ? initialTarget.folderId : ''
+  )
 
   // Step 3 (CSV)
   const [mapping, setMapping] = useState({})

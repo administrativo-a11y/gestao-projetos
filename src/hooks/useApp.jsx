@@ -198,16 +198,32 @@ export function AppProvider({ children }) {
       .single()
 
     if (!error && data) {
-      const statuses = useSpaceStatuses
-        ? (activeSpace?.space_statuses ?? [])
-        : [
-            { name: 'A fazer', color: '#888780', position: 0 },
-            { name: 'Em andamento', color: '#378ADD', position: 1 },
-            { name: 'Concluído', color: '#1D9E75', position: 2 },
-          ]
+      let statuses = []
+      if (useSpaceStatuses) {
+        // Busca direto do banco pra pegar o estado atual (não o cache em memória,
+        // que pode estar desatualizado se o user editou status há pouco)
+        const { data: rows } = await supabase
+          .from('space_statuses')
+          .select('name, color, position, category')
+          .eq('space_id', activeSpace.id)
+          .order('position')
+        statuses = rows ?? []
+      } else {
+        statuses = [
+          { name: 'TO START',     color: '#888780', position: 0, category: 'open' },
+          { name: 'IN PROGRESS',  color: '#378ADD', position: 1, category: 'open' },
+          { name: 'DONE',         color: '#1D9E75', position: 2, category: 'open' },
+        ]
+      }
       if (statuses.length > 0) {
         await supabase.from('list_statuses').insert(
-          statuses.map(s => ({ list_id: data.id, name: s.name, color: s.color, position: s.position }))
+          statuses.map(s => ({
+            list_id: data.id,
+            name: s.name,
+            color: s.color,
+            position: s.position,
+            category: s.category ?? 'open',
+          }))
         )
       }
       await fetchFoldersAndLists(activeSpace.id)

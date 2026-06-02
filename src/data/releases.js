@@ -3,6 +3,31 @@
 
 export const RELEASES = [
   {
+    version: '2.8.0',
+    date: '2026-06-02',
+    title: 'Importação ClickUp CSV',
+    items: [
+      { type: 'feat', text: 'Detecta automaticamente "Task Name", "Due Date", "Assignee" e outros headers do ClickUp em inglês' },
+      { type: 'feat', text: 'Aceita datas em inglês ("Friday, May 29th 2026") e em português ("29 de maio de 2026")' },
+      { type: 'feat', text: 'Match de responsável por NOME (não só e-mail) — útil pra exports do ClickUp/Asana' },
+      { type: 'feat', text: 'Trata brackets do ClickUp: "[Nome A],[Nome B]" → 2 responsáveis' },
+      { type: 'feat', text: 'Auto-ignora colunas comuns sem destino útil: Task ID, Anexos, Time Logged' },
+      { type: 'feat', text: 'Latest Comment vira descrição da tarefa (em vez de perder)' },
+    ],
+  },
+  {
+    version: '2.7.0',
+    date: '2026-06-02',
+    title: 'Sidebar polish + fix herança de status',
+    items: [
+      { type: 'fix', text: 'Listas novas agora herdam corretamente os status do espaço (incluindo categoria open/closed)' },
+      { type: 'fix', text: 'Importação também copia a categoria dos status' },
+      { type: 'feat', text: 'Ícone de pasta muda pra "aberta" quando expandida' },
+      { type: 'feat', text: 'Linha vertical conectando pasta e suas listas (tree visual)' },
+      { type: 'feat', text: 'Item "Importar..." no menu de cada pasta e cada lista (pré-seleciona o destino)' },
+    ],
+  },
+  {
     version: '2.6.0',
     date: '2026-06-01',
     title: 'Convite por e-mail automático',
