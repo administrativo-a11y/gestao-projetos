@@ -10,6 +10,7 @@ import SpaceSettingsModal from '../space/SpaceSettingsModal'
 import FolderPermissionsPanel from '../folder/FolderPermissionsPanel'
 import ImportModal from '../import/ImportModal'
 import { CURRENT_VERSION } from '../../data/releases'
+import { supabase } from '../../lib/supabase'
 import styles from './Sidebar.module.css'
 
 const COLORS = ['#1D9E75','#378ADD','#EF9F27','#7F77DD','#E24B4A','#D4537E']
@@ -51,6 +52,14 @@ const ImportIcon = () => (
     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
     <polyline points="7 10 12 15 17 10"/>
     <line x1="12" y1="15" x2="12" y2="3"/>
+  </svg>
+)
+
+const RefreshIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="23 4 23 10 17 10"/>
+    <polyline points="1 20 1 14 7 14"/>
+    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
   </svg>
 )
 
@@ -133,6 +142,23 @@ export default function Sidebar() {
   function closeImport() {
     setShowImport(false)
     setImportTarget(null)
+  }
+
+  async function handleApplySpaceStatuses(listId, listName) {
+    const ok = confirm(
+      `Aplicar os status do espaço na lista "${listName}"?\n\n` +
+      `Os status atuais da lista serão SUBSTITUÍDOS pelos do espaço. ` +
+      `Tarefas que estavam nesses status ficarão temporariamente sem status — ` +
+      `você pode reatribuir clicando na bolinha de cada uma.`
+    )
+    if (!ok) return
+    const { data, error } = await supabase.rpc('apply_space_statuses_to_list', { p_list_id: listId })
+    if (error) {
+      alert(`Falha: ${error.message}\n\nA função pode não ter sido instalada no banco — rode supabase_schema_v15.sql.`)
+      return
+    }
+    alert(`${data} status aplicados à lista "${listName}". Recarregando...`)
+    window.location.reload()
   }
   const [lastSeenVersion, setLastSeenVersion] = useState(() => {
     try { return localStorage.getItem('gp.last_seen_version') } catch { return null }
@@ -453,6 +479,7 @@ export default function Sidebar() {
                                     if (error) alert(error.message)
                                   } },
                                   { label: 'Importar...', icon: <ImportIcon />, onClick: () => openImport({ type: 'list', listId: list.id }) },
+                                  { label: 'Aplicar status do espaço', icon: <RefreshIcon />, onClick: () => handleApplySpaceStatuses(list.id, list.name) },
                                   { separator: true },
                                   listArchived
                                     ? { label: 'Desarquivar', icon: <Unarchive />, onClick: () => unarchiveList(list.id) }
