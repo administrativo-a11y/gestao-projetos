@@ -214,7 +214,35 @@
 .listRow:focus-within .rowActions { opacity: 1; }
 .spaceRow:focus-within .spaceActions { opacity: 1; }
 
-.nested { padding-left: 16px; }
+.nested {
+  padding-left: 20px;
+  position: relative;
+}
+.nested::before {
+  /* linha vertical conectando as listas à pasta pai */
+  content: '';
+  position: absolute;
+  left: 13px;
+  top: 0;
+  bottom: 6px;
+  width: 1px;
+  background: var(--color-border-strong);
+  opacity: 0.5;
+}
+.nested .listRow {
+  position: relative;
+}
+.nested .listRow::before {
+  /* "L" horizontal conectando da linha vertical até a row */
+  content: '';
+  position: absolute;
+  left: -7px;
+  top: 50%;
+  width: 7px;
+  height: 1px;
+  background: var(--color-border-strong);
+  opacity: 0.5;
+}
 
 .listRow {
   display: flex; align-items: center;

@@ -3,6 +3,18 @@
 
 export const RELEASES = [
   {
+    version: '2.7.0',
+    date: '2026-06-02',
+    title: 'Sidebar polish + fix herança de status',
+    items: [
+      { type: 'fix', text: 'Listas novas agora herdam corretamente os status do espaço (incluindo categoria open/closed)' },
+      { type: 'fix', text: 'Importação também copia a categoria dos status' },
+      { type: 'feat', text: 'Ícone de pasta muda pra "aberta" quando expandida' },
+      { type: 'feat', text: 'Linha vertical conectando pasta e suas listas (tree visual)' },
+      { type: 'feat', text: 'Item "Importar..." no menu de cada pasta e cada lista (pré-seleciona o destino)' },
+    ],
+  },
+  {
     version: '2.6.0',
     date: '2026-06-01',
     title: 'Convite por e-mail automático',

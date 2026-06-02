@@ -67,15 +67,21 @@ async function runImport(
     if (error) throw new Error('Não foi possível criar a lista: ' + error.message)
     listId = created.id
 
-    // Copia os status do espaço (igual ao fluxo normal de criação)
+    // Copia os status do espaço (igual ao fluxo normal de criação, incluindo category)
     const { data: spaceStatuses } = await supabase
       .from('space_statuses')
-      .select('*')
+      .select('name, color, position, category')
       .eq('space_id', spaceId)
       .order('position')
     if (spaceStatuses?.length > 0) {
       await supabase.from('list_statuses').insert(
-        spaceStatuses.map(s => ({ list_id: listId, name: s.name, color: s.color, position: s.position }))
+        spaceStatuses.map(s => ({
+          list_id: listId,
+          name: s.name,
+          color: s.color,
+          position: s.position,
+          category: s.category ?? 'open',
+        }))
       )
     }
   }

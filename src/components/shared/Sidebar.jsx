@@ -39,6 +39,21 @@ const FolderIcon = () => (
   </svg>
 )
 
+const FolderOpenIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v1H3V7z"/>
+    <path d="M3 11h18l-2 8a2 2 0 0 1-2 1.5H6a2 2 0 0 1-2-1.5L3 11z"/>
+  </svg>
+)
+
+const ImportIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+    <polyline points="7 10 12 15 17 10"/>
+    <line x1="12" y1="15" x2="12" y2="3"/>
+  </svg>
+)
+
 const ListIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
     <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
@@ -109,6 +124,16 @@ export default function Sidebar() {
   const [permissionsFolder, setPermissionsFolder] = useState(null)
   const [showReleases, setShowReleases] = useState(false)
   const [showImport, setShowImport] = useState(false)
+  const [importTarget, setImportTarget] = useState(null) // null | { type: 'folder'|'list', id }
+
+  function openImport(target = null) {
+    setImportTarget(target)
+    setShowImport(true)
+  }
+  function closeImport() {
+    setShowImport(false)
+    setImportTarget(null)
+  }
   const [lastSeenVersion, setLastSeenVersion] = useState(() => {
     try { return localStorage.getItem('gp.last_seen_version') } catch { return null }
   })
@@ -276,7 +301,7 @@ export default function Sidebar() {
                   items={[
                     { label: 'Renomear', onClick: () => startEditing('space', activeSpace.id, activeSpace.name) },
                     { label: 'Configurações do espaço', onClick: () => setShowSpaceSettings(true) },
-                    { label: 'Importar...', onClick: () => setShowImport(true) },
+                    { label: 'Importar...', icon: <ImportIcon />, onClick: () => openImport(null) },
                     { separator: true },
                     {
                       label: showArchived ? 'Ocultar arquivados' : 'Mostrar arquivados',
@@ -349,7 +374,7 @@ export default function Sidebar() {
                     <div className={styles.treeRow} {...__dpF.dragHandleProps}>
                       <button className={styles.treeToggle} onClick={() => !isEditing('folder', folder.id) && toggleFolder(folder.id)}>
                         <Chevron open={isOpen} />
-                        {isArchived ? <Archive /> : <FolderIcon />}
+                        {isArchived ? <Archive /> : (isOpen ? <FolderOpenIcon /> : <FolderIcon />)}
                         {isEditing('folder', folder.id) ? (
                           <RenameInput kind="folder" id={folder.id} />
                         ) : (
@@ -369,6 +394,7 @@ export default function Sidebar() {
                               const { error } = await duplicateFolder(folder.id)
                               if (error) alert(error.message)
                             } },
+                            { label: 'Importar...', icon: <ImportIcon />, onClick: () => openImport({ type: 'folder', folderId: folder.id }) },
                             { label: 'Permissões', icon: <Lock />, onClick: () => setPermissionsFolder(folder) },
                             { separator: true },
                             isArchived
@@ -426,6 +452,7 @@ export default function Sidebar() {
                                     const { error } = await duplicateList(list.id)
                                     if (error) alert(error.message)
                                   } },
+                                  { label: 'Importar...', icon: <ImportIcon />, onClick: () => openImport({ type: 'list', listId: list.id }) },
                                   { separator: true },
                                   listArchived
                                     ? { label: 'Desarquivar', icon: <Unarchive />, onClick: () => unarchiveList(list.id) }
@@ -589,7 +616,7 @@ export default function Sidebar() {
 
       {showReleases && <ReleaseNotesModal onClose={() => setShowReleases(false)} />}
       {showImport && activeSpace && (
-        <ImportModal space={activeSpace} onClose={() => setShowImport(false)} />
+        <ImportModal space={activeSpace} initialTarget={importTarget} onClose={closeImport} />
       )}
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
       {showSpaceSettings && activeSpace && (
