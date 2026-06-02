@@ -33,7 +33,27 @@ alter table public.tasks
 create index if not exists idx_tasks_type on public.tasks(type_id);
 
 -- ============================================================
--- 3) RLS — segue o padrão dos space_statuses
+-- 3) Helper function — can_view_space (caso ainda não exista)
+--    Cria pela primeira vez aqui pra não depender de schemas
+--    anteriores que não tinham definido.
+-- ============================================================
+
+create or replace function public.can_view_space(p_space_id uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.space_members
+    where space_id = p_space_id
+      and user_id = auth.uid()
+  );
+$$;
+
+-- ============================================================
+-- 4) RLS — segue o padrão dos space_statuses
 -- ============================================================
 
 alter table public.space_task_types enable row level security;
