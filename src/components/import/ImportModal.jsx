@@ -16,6 +16,7 @@ const FIELD_DESTS = [
   { id: 'priority', label: 'Prioridade' },
   { id: 'status', label: 'Status (por nome)' },
   { id: 'assignee_email', label: 'Responsável (e-mail)' },
+  { id: 'assignee_name', label: 'Responsável (nome)' },
   { id: 'tag', label: 'Tag' },
   { id: 'custom_field', label: 'Campo personalizado' },
   { id: '__ignore__', label: 'Ignorar' },
