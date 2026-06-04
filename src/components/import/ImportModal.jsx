@@ -82,9 +82,12 @@ export default function ImportModal({ space, onClose, initialTarget }) {
       setParseError('Formato não suportado. Use .xml (MS Project) ou .csv.')
       return
     }
+    // Lê como ArrayBuffer pra poder testar encodings.
+    // CSVs do Excel em PT-BR vêm em Windows-1252; outros vêm em UTF-8.
     const reader = new FileReader()
     reader.onload = (e) => {
-      const text = e.target.result
+      const buf = e.target.result
+      let text = decodeWithFallback(buf)
       try {
         if (isXml) {
           const result = parseMSProject(text)
@@ -110,7 +113,18 @@ export default function ImportModal({ space, onClose, initialTarget }) {
       }
     }
     reader.onerror = () => setParseError('Erro ao ler o arquivo.')
-    reader.readAsText(f, 'utf-8')
+    reader.readAsArrayBuffer(f)
+  }
+
+  // Tenta UTF-8 primeiro; se aparecer o caractere de substituição (), refaz com Windows-1252
+  function decodeWithFallback(arrayBuffer) {
+    const bytes = new Uint8Array(arrayBuffer)
+    // Tenta UTF-8 com fatal: false (substitui caracteres inválidos por )
+    const utf8 = new TextDecoder('utf-8', { fatal: false }).decode(bytes)
+    // Se NÃO tem o substituto Unicode, é UTF-8 válido
+    if (!utf8.includes('�')) return utf8
+    // Senão, refaz como Windows-1252 (compatível com ISO-8859-1)
+    return new TextDecoder('windows-1252').decode(bytes)
   }
 
   function onDrop(e) {
