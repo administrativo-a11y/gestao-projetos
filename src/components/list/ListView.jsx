@@ -1,4 +1,5 @@
 import { Fragment, useState, useMemo, useEffect, useCallback } from 'react'
+import { supabase } from '../../lib/supabase'
 import { useTasks } from '../../hooks/useTasks'
 import { useApp } from '../../hooks/useApp'
 import { useAuth } from '../../hooks/useAuth'
@@ -539,6 +540,11 @@ export default function ListView() {
   if (!activeList) return null
   if (loading) return <div className={styles.loading}>Carregando...</div>
 
+  // Lista sem status: oferece criar a partir dos do espaço
+  if (statuses.length === 0) {
+    return <NoStatusEmpty listId={activeList.id} />
+  }
+
   // ── Render ─────────────────────────────────────────────────────────
   return (
     <>
@@ -913,5 +919,92 @@ export default function ListView() {
         )
       })()}
     </>
+  )
+}
+
+function NoStatusEmpty({ listId }) {
+  const [working, setWorking] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleFix() {
+    setError('')
+    setWorking(true)
+    // RPC respeita permissão (security definer + can_edit_list)
+    const { data, error: rpcErr } = await supabase.rpc('ensure_list_statuses', { p_list_id: listId })
+    if (rpcErr) {
+      setError(`Falha ao criar status: ${rpcErr.message}. Pode ser que a função do banco ainda não esteja atualizada — peça pro admin rodar supabase_schema_v14.sql.`)
+      setWorking(false)
+      return
+    }
+    // RPC retorna número de status criados. Se for 0, talvez o espaço esteja sem status também.
+    if (data === 0) {
+      setError('Nenhum status criado. Verifique se o espaço tem status configurados em Configurações do espaço → Status.')
+      setWorking(false)
+      return
+    }
+    // Recarrega pra refletir
+    window.location.reload()
+  }
+
+  return (
+    <div style={{
+      padding: 60,
+      textAlign: 'center',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 16,
+    }}>
+      <div style={{
+        width: 56,
+        height: 56,
+        borderRadius: '50%',
+        background: 'var(--color-surface-2)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-tertiary)" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <h2 style={{ fontSize: 18, fontWeight: 500, color: 'var(--color-text-primary)' }}>
+        Esta lista não tem status configurados
+      </h2>
+      <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', maxWidth: 480, lineHeight: 1.5 }}>
+        Sem status, não é possível criar tarefas. Clique no botão abaixo pra copiar
+        os status do espaço — o mesmo conjunto que outras listas novas usam.
+      </p>
+      {error && (
+        <p style={{
+          fontSize: 12,
+          color: 'var(--color-danger)',
+          background: 'var(--color-danger-light)',
+          padding: '8px 12px',
+          borderRadius: 6,
+          maxWidth: 480,
+        }}>{error}</p>
+      )}
+      <button
+        type="button"
+        onClick={handleFix}
+        disabled={working}
+        style={{
+          padding: '8px 18px',
+          fontSize: 13,
+          fontWeight: 500,
+          color: '#fff',
+          background: 'var(--color-accent)',
+          border: 'none',
+          borderRadius: 6,
+          cursor: 'pointer',
+          fontFamily: 'var(--font-sans)',
+        }}
+      >
+        {working ? 'Criando...' : 'Criar status padrão'}
+      </button>
+    </div>
   )
 }

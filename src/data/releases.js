@@ -3,6 +3,20 @@
 
 export const RELEASES = [
   {
+    version: '2.9.0',
+    date: '2026-06-02',
+    title: 'Rail de navegação + breadcrumb com bolinha',
+    items: [
+      { type: 'feat', text: 'Rail vertical no canto esquerdo: Início, Espaços, Documentos, Convidar' },
+      { type: 'feat', text: 'Ícone do espaço no breadcrumb agora é uma bolinha colorida com a primeira letra (não mais "S" sozinho)' },
+      { type: 'feat', text: 'Click no nome do espaço no breadcrumb navega pra raiz do espaço' },
+      { type: 'feat', text: 'Botão Convidar abre Configurações do espaço direto na aba Membros' },
+      { type: 'fix', text: 'Loop infinito de re-fetch (ERR_INSUFFICIENT_RESOURCES) — useCallback com objeto como dep' },
+      { type: 'feat', text: 'Empty state com botão "Criar status padrão" pra listas órfãs' },
+      { type: 'chore', text: 'Schema v14: RPC ensure_list_statuses + backfill de list_statuses' },
+    ],
+  },
+  {
     version: '2.8.0',
     date: '2026-06-02',
     title: 'Importação ClickUp CSV',

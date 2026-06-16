@@ -215,22 +215,45 @@
 .crumb {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 2px 6px;
+  gap: 6px;
+  padding: 3px 7px;
   font-size: 13px;
   color: var(--color-text-tertiary);
   border-radius: var(--radius-sm);
   max-width: 180px;
   cursor: default;
+  background: none;
+  border: none;
+  font-family: var(--font-sans);
 }
 .crumb .crumbText {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.crumbClickable {
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.crumbClickable:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text-primary);
+}
 .crumbIcon {
   font-size: 13px;
   line-height: 1;
+}
+.crumbSpaceIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
 }
 .crumbIconSvg {
   color: var(--color-text-tertiary);

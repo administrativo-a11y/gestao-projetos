@@ -61,10 +61,10 @@ export function ThemeProvider({ children }) {
     setPreference(next)
     setActive(resolveActive(next))
     try { localStorage.setItem(STORAGE_KEY, next) } catch { /* ignore */ }
-    if (user) {
+    if (user?.id) {
       await supabase.from('profiles').update({ theme_preference: next }).eq('id', user.id)
     }
-  }, [user])
+  }, [user?.id])
 
   return (
     <ThemeContext.Provider value={{ preference, active, setTheme }}>

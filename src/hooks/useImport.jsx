@@ -71,7 +71,7 @@ async function runImport(
         folder_id: folderId ?? null,
         name: listName?.trim() || 'Lista importada',
       })
-      .select('*, space_statuses(*)')
+      .select()
       .single()
     if (error) throw new Error('Não foi possível criar a lista: ' + error.message)
     listId = created.id
