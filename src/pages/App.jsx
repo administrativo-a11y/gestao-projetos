@@ -134,7 +134,12 @@ export default function AppPage() {
     if (activeList?.id) saveViewFor(activeList.id, next)
   }
 
-  // URL → state
+  // Marca quando o state→URL acabou de disparar um navigate.
+  // Sem isso, o useEffect URL→state abaixo veria activeList mudou,
+  // mas a URL ainda com o ID antigo, e REVERTERIA o state pra a URL velha.
+  const syncingFromStateRef = useRef(false)
+
+  // URL → state (spaceId)
   useEffect(() => {
     if (!spaceId) return
     if (spaces.length === 0) return
@@ -143,7 +148,13 @@ export default function AppPage() {
     if (sp) setActiveSpace(sp)
   }, [spaceId, spaces, activeSpace?.id, setActiveSpace])
 
+  // URL → state (listId)
   useEffect(() => {
+    // Se a URL mudou por causa do state→URL abaixo, NÃO sobrescreve com base na URL "velha".
+    if (syncingFromStateRef.current) {
+      syncingFromStateRef.current = false
+      return
+    }
     if (!listId) return
     if (lists.length === 0) return
     if (activeList?.id === listId) return
@@ -151,16 +162,21 @@ export default function AppPage() {
     if (li) selectList(li)
   }, [listId, lists, activeList?.id, selectList])
 
+  // state → URL
   useEffect(() => {
     const search = window.location.search
     if (!activeSpace) {
-      if (spaceId) navigate({ pathname: '/', search }, { replace: true })
+      if (spaceId) {
+        syncingFromStateRef.current = true
+        navigate({ pathname: '/', search }, { replace: true })
+      }
       return
     }
     const want = activeList
       ? `/space/${activeSpace.id}/list/${activeList.id}`
       : `/space/${activeSpace.id}`
     if (window.location.pathname !== want) {
+      syncingFromStateRef.current = true
       navigate({ pathname: want, search }, { replace: true })
     }
   }, [activeSpace, activeList])
