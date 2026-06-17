@@ -9,7 +9,7 @@ export function useSavedViews(listId) {
   const [loading, setLoading] = useState(true)
 
   const refetch = useCallback(async () => {
-    if (!listId || !user?.id) return
+    if (!listId || !user?.id) { setViews([]); setLoading(false); return }
     setLoading(true)
     const { data } = await supabase
       .from('saved_views')

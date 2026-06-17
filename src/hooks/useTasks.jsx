@@ -25,23 +25,33 @@ export function useTasks(listId) {
     }
     const requestedListId = listId
     setLoading(true)
-    const [statusRes, taskRes] = await Promise.all([
-      supabase.from('list_statuses').select('*').eq('list_id', requestedListId).order('position'),
-      supabase.from('tasks').select(`
-        *,
-        task_assignees(user_id, profiles(id, name, avatar_url)),
-        task_tags(tag_id, tags(id, name, color)),
-        subtasks(id, done, title, assignee_id, due_date, description, position),
-        task_field_values(field_id, value),
-        comments(id, content, created_at, user_id, profiles(name, avatar_url)),
-        task_attachments(id, file_name)
-      `).eq('list_id', requestedListId).is('deleted_at', null).order('position'),
-    ])
-    // Descarta se o user já navegou pra outra lista enquanto esse fetch rodava
-    if (activeListIdRef.current !== requestedListId) return
-    setStatuses(statusRes.data ?? [])
-    setTasks(taskRes.data ?? [])
-    setLoading(false)
+    try {
+      const [statusRes, taskRes] = await Promise.all([
+        supabase.from('list_statuses').select('*').eq('list_id', requestedListId).order('position'),
+        supabase.from('tasks').select(`
+          *,
+          task_assignees(user_id, profiles(id, name, avatar_url)),
+          task_tags(tag_id, tags(id, name, color)),
+          subtasks(id, done, title, assignee_id, due_date, description, position),
+          task_field_values(field_id, value),
+          comments(id, content, created_at, user_id, profiles(name, avatar_url)),
+          task_attachments(id, file_name)
+        `).eq('list_id', requestedListId).is('deleted_at', null).order('position'),
+      ])
+      // Só aplica e libera loading se ainda for o fetch atual.
+      // Se mudou de lista no meio, o useEffect já disparou novo fetchAll que vai
+      // setar loading=false quando terminar.
+      if (activeListIdRef.current !== requestedListId) return
+      setStatuses(statusRes.data ?? [])
+      setTasks(taskRes.data ?? [])
+      setLoading(false)
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[useTasks] fetchAll falhou:', err)
+      if (activeListIdRef.current === requestedListId) {
+        setLoading(false)
+      }
+    }
   }, [listId])
 
   useEffect(() => {
@@ -52,6 +62,22 @@ export function useTasks(listId) {
     setLoading(true)
     fetchAll()
   }, [fetchAll])
+
+  // Refetch quando a aba volta a ter foco — pega mudanças que aconteceram
+  // enquanto o usuário estava em outra aba ou no SQL Editor.
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === 'visible' && listId) {
+        fetchAll()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [fetchAll, listId])
 
   // Realtime: refetch quando qualquer coisa muda nas tabelas da tarefa.
   // RLS no banco garante que só recebemos eventos do que podemos ver.

@@ -130,6 +130,12 @@ export default function ListView() {
     () => [...STANDARD_KEYS, ...customFields.map(f => `cf:${f.id}`)],
     [customFields]
   )
+  // Chave estável pra usar como dep do useEffect abaixo. Só muda quando
+  // os IDs de custom fields realmente mudam (não a cada render).
+  const customFieldIdsKey = useMemo(
+    () => customFields.map(f => f.id).join(','),
+    [customFields]
+  )
   const [columnOrder, setColumnOrder] = useState(defaultOrder)
 
   // Carrega/sincroniza com customFields que aparecem/somem
@@ -146,7 +152,7 @@ export default function ListView() {
     const missing = defaultOrder.filter(k => !filtered.includes(k))
     setColumnOrder([...filtered, ...missing])
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeList?.id, customFields.map(f => f.id).join(',')])
+  }, [activeList?.id, customFieldIdsKey])
 
   function persistOrder(order) {
     try { localStorage.setItem(ORDER_KEY(activeList.id), JSON.stringify(order)) } catch { /* ignore */ }

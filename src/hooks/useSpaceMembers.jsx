@@ -10,7 +10,7 @@ export function useSpaceMembers(spaceId) {
   const [loading, setLoading] = useState(true)
 
   const refetch = useCallback(async () => {
-    if (!spaceId) return
+    if (!spaceId) { setMembers([]); setInvitations([]); setLoading(false); return }
     setLoading(true)
     const [membersRes, invitesRes] = await Promise.all([
       supabase

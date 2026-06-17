@@ -22,7 +22,7 @@ export function useCustomFields(listId) {
   const [error, setError] = useState('')
 
   const refetch = useCallback(async () => {
-    if (!listId) return
+    if (!listId) { setFields([]); setLoading(false); return }
     setLoading(true)
     const { data } = await supabase
       .from('custom_fields')
