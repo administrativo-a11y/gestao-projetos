@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { useRealtimeSync } from './useRealtimeSync'
@@ -10,11 +10,23 @@ export function useTasks(listId) {
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
 
+  // Rastreia qual listId está "ativo". Respostas de fetches de listas anteriores
+  // são descartadas (race condition quando o user troca de lista rapidamente).
+  const activeListIdRef = useRef(listId)
+  useEffect(() => { activeListIdRef.current = listId }, [listId])
+
   const fetchAll = useCallback(async () => {
-    if (!listId) return
+    if (!listId) {
+      // Limpa estado quando não há lista
+      setStatuses([])
+      setTasks([])
+      setLoading(false)
+      return
+    }
+    const requestedListId = listId
     setLoading(true)
     const [statusRes, taskRes] = await Promise.all([
-      supabase.from('list_statuses').select('*').eq('list_id', listId).order('position'),
+      supabase.from('list_statuses').select('*').eq('list_id', requestedListId).order('position'),
       supabase.from('tasks').select(`
         *,
         task_assignees(user_id, profiles(id, name, avatar_url)),
@@ -23,14 +35,21 @@ export function useTasks(listId) {
         task_field_values(field_id, value),
         comments(id, content, created_at, user_id, profiles(name, avatar_url)),
         task_attachments(id, file_name)
-      `).eq('list_id', listId).is('deleted_at', null).order('position'),
+      `).eq('list_id', requestedListId).is('deleted_at', null).order('position'),
     ])
+    // Descarta se o user já navegou pra outra lista enquanto esse fetch rodava
+    if (activeListIdRef.current !== requestedListId) return
     setStatuses(statusRes.data ?? [])
     setTasks(taskRes.data ?? [])
     setLoading(false)
   }, [listId])
 
   useEffect(() => {
+    // Reseta o estado imediatamente ao trocar de lista, pra não exibir
+    // dados da lista anterior enquanto o novo fetch roda.
+    setStatuses([])
+    setTasks([])
+    setLoading(true)
     fetchAll()
   }, [fetchAll])
 
