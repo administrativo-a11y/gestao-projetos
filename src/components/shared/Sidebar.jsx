@@ -82,6 +82,14 @@ const Dots = () => (
   </svg>
 )
 
+const GripIcon = () => (
+  <svg width="10" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <circle cx="9" cy="5" r="1.4"/><circle cx="15" cy="5" r="1.4"/>
+    <circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/>
+    <circle cx="9" cy="19" r="1.4"/><circle cx="15" cy="19" r="1.4"/>
+  </svg>
+)
+
 const Copy = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
     <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -397,7 +405,10 @@ export default function Sidebar() {
                     {...__dpF.draggableProps}
                     className={`${isArchived ? styles.archivedItem : ''} ${__snapF.isDragging ? styles.dragging : ''}`}
                   >
-                    <div className={styles.treeRow} {...__dpF.dragHandleProps}>
+                    <div className={styles.treeRow}>
+                      <span className={styles.dragHandle} {...__dpF.dragHandleProps} aria-label="Arrastar pasta" title="Arrastar">
+                        <GripIcon />
+                      </span>
                       <button className={styles.treeToggle} onClick={() => !isEditing('folder', folder.id) && toggleFolder(folder.id)}>
                         <Chevron open={isOpen} />
                         {isArchived ? <Archive /> : (isOpen ? <FolderOpenIcon /> : <FolderIcon />)}
@@ -452,9 +463,11 @@ export default function Sidebar() {
                             <div
                               ref={__dpL.innerRef}
                               {...__dpL.draggableProps}
-                              {...__dpL.dragHandleProps}
                               className={`${styles.listRow} ${listArchived ? styles.archivedItem : ''} ${__snapL.isDragging ? styles.dragging : ''}`}
                             >
+                              <span className={styles.dragHandle} {...__dpL.dragHandleProps} aria-label="Arrastar lista" title="Arrastar">
+                                <GripIcon />
+                              </span>
                               <button
                                 className={`${styles.listBtn} ${activeList?.id === list.id ? styles.listActive : ''}`}
                                 onClick={() => !isEditing('list', list.id) && selectList(list)}
