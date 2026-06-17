@@ -8,7 +8,7 @@ export function useSpaceStatuses(spaceId) {
   const [error, setError] = useState('')
 
   const refetch = useCallback(async () => {
-    if (!spaceId) return
+    if (!spaceId) { setStatuses([]); setLoading(false); return }
     setLoading(true)
     const { data } = await supabase
       .from('space_statuses')

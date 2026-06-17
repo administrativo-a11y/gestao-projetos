@@ -63,6 +63,22 @@ export function useTasks(listId) {
     fetchAll()
   }, [fetchAll])
 
+  // Refetch quando a aba volta a ter foco — pega mudanças que aconteceram
+  // enquanto o usuário estava em outra aba ou no SQL Editor.
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === 'visible' && listId) {
+        fetchAll()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [fetchAll, listId])
+
   // Realtime: refetch quando qualquer coisa muda nas tabelas da tarefa.
   // RLS no banco garante que só recebemos eventos do que podemos ver.
   const subscriptions = useMemo(() => listId ? [
