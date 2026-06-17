@@ -122,11 +122,11 @@ export default function AppPage() {
     safeSet(SIDEBAR_COLLAPSED_KEY, v ? '1' : '0')
   }
 
-  // Restaurar view ao trocar de lista
+  // Restaurar view ao trocar de lista — padrão é 'list' (visão Lista)
   useEffect(() => {
     if (!activeList) return
     const saved = loadViewFor(activeList.id)
-    setActiveViewState(saved ?? 'board')
+    setActiveViewState(saved ?? 'list')
   }, [activeList?.id])
 
   function setActiveView(next) {
